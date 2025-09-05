@@ -12,7 +12,7 @@ Class Form1
     ' 线程过程示例
     Function ThreadProc(ByVal param As LongPtr) As Long
         Dim t As cTask
-        Set t = ObjectFromPtr(param)
+        Set t = mTask.ObjectFromPtr(param)
     
         Dim i As Long
         For i = 1 To 10

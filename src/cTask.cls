@@ -651,4 +651,51 @@ Class cTask
         ByVal lParam As LongPtr _
     ) As Long
 
+    ' 超时处理专用的Friend方法
+    Friend Sub HandleTimeout()
+        If m_IsRunning Then
+            WriteLog "Task timed out after " & m_TaskTimeout & "ms"
+            m_Result = TaskResult_TimedOut
+            RequestCancel
+        End If
+    End Sub
+    
+    '@Description "超时处理线程过程"
+    Private Function TimeoutProc(ByVal param As LongPtr) As Long
+        On Error GoTo ErrorHandler
+        
+        Dim task As cTask
+        Set task = mTask.ObjectFromPtr(param)
+        
+        ' 使用公共接口获取超时时间
+        Dim timeoutValue As Long
+        timeoutValue = task.GetTimeout
+        
+        ' 等待指定的超时时间
+        Sleep timeoutValue
+        
+        ' 通过Friend方法处理超时
+        task.HandleTimeout
+        
+        TimeoutProc = 0
+        Exit Function
+        
+    ErrorHandler:
+        TimeoutProc = 1
+    End Function
+    
+    '@Description "获取超时时间"
+    Public Function GetTimeout() As Long
+        LockState
+        GetTimeout = m_TaskTimeout
+        UnlockState
+    End Function
+    
+    '@Description "任务是否超时"
+    Public Property Get IsTimedOut() As Boolean
+        LockState
+        IsTimedOut = (m_Result = TaskResult_TimedOut)
+        UnlockState
+    End Property
+
 End Class
