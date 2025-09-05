@@ -581,7 +581,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.SetTaskData", "无法设置任务参数: " & Err.Description
+        Err.Raise Err.Number, "cTask.SetTaskData", "Failed to set task parameter: " & Err.Description
     End Sub
     
     '@Description "获取任务输入参数"
@@ -598,7 +598,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.GetTaskData", "无法获取任务参数: " & Err.Description
+        Err.Raise Err.Number, "cTask.GetTaskData", "Failed to get task parameter: " & Err.Description
     End Function
     
     '@Description "设置任务结果"
@@ -613,7 +613,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.SetTaskResult", "无法设置任务结果: " & Err.Description
+        Err.Raise Err.Number, "cTask.SetTaskResult", "Failed to set task result: " & Err.Description
     End Sub
     
     '@Description "获取任务结果"
@@ -630,7 +630,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.GetTaskResult", "无法获取任务结果: " & Err.Description
+        Err.Raise Err.Number, "cTask.GetTaskResult", "Failed to get task result: " & Err.Description
     End Function
     
     '@Description "清除任务数据"
