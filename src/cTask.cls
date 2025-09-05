@@ -47,6 +47,8 @@ Class cTask
     Private m_LastError As Long
     Private m_ErrorDescription As String
     Private m_StateLock As LongPtr  ' 用于状态同步的互斥体
+    Private m_StartTime As Currency  ' 用于记录任务开始时间
+    Private m_EndTime As Currency    ' 用于记录任务结束时间
 
     ' 在类模块顶部添加（公共枚举）
     Public Enum eTaskWaitBehavior
@@ -117,6 +119,8 @@ Class cTask
             UnlockState
             Exit Sub
         End If
+        
+        QueryPerformanceCounter m_StartTime
     
         m_CancelRequested = False
         m_ThreadHandle = CreateThread( _
@@ -362,5 +366,22 @@ Class cTask
     Private Sub UnlockState()
         ReleaseMutex m_StateLock
     End Sub
+    
+    '@Description "获取任务执行时间(毫秒)"
+    Public Property Get ExecutionTime() As Double
+        Dim freq As Currency
+        QueryPerformanceFrequency freq
+        
+        If m_EndTime = 0 Then
+            Dim currentTime As Currency
+            QueryPerformanceCounter currentTime
+            ExecutionTime = (currentTime - m_StartTime) * 1000 / freq
+        Else
+            ExecutionTime = (m_EndTime - m_StartTime) * 1000 / freq
+        End If
+    End Property
+
+    Private Declare Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
+    Private Declare Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
 
 End Class

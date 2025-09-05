@@ -6,7 +6,17 @@ Class cTasks
     Private m_Tasks As Collection
     Private m_MaxThreads As Long
     Private m_ActiveThreads As Long
+    Private m_LastError As Long
+    Private m_ErrorDescription As String
+    Private m_CompletedTasks As Long
+    Private m_TotalExecutionTime As Double
+    Private m_State As ePoolState
     
+    Public Enum ePoolState
+        PoolState_Running = 0
+        PoolState_Stopping = 1
+        PoolState_Stopped = 2
+    End Enum
     Public Enum ePoolWaitBehavior
         PoolWait_ReturnOnTimeout = 0
         PoolWait_TerminateAllOnTimeout = 1
@@ -174,11 +184,62 @@ Class cTasks
         i = 1
         Do While i <= m_Tasks.Count
             If Not m_Tasks(i).IsRunning Then
+                UpdateTaskStats m_Tasks(i)
                 m_Tasks.Remove i
             Else
                 i = i + 1
             End If
         Loop
+    End Sub
+    
+    '@Description "优雅关闭线程池"
+    Public Sub Shutdown(Optional ByVal TimeoutMs As Long = 5000)
+        m_State = PoolState_Stopping
+        
+        ' 首先尝试取消所有任务
+        RequestCancelAll
+        
+        ' 等待指定时间
+        WaitForAll TimeoutMs
+        
+        ' 如果还有任务在运行，强制终止
+        If m_ActiveThreads > 0 Then
+            TerminateAll
+        End If
+        
+        m_State = PoolState_Stopped
+    End Sub
+    
+    '@Description "获取线程池状态"
+    Public Property Get State() As ePoolState
+        State = m_State
+    End Property
+    
+    '@Description "获取最后一次错误信息"
+    Public Property Get LastError() As String
+        LastError = m_ErrorDescription
+    End Property
+    
+    '@Description "获取已完成的任务数量"
+    Public Property Get CompletedTasks() As Long
+        CompletedTasks = m_CompletedTasks
+    End Property
+    
+    '@Description "获取平均任务执行时间(毫秒)"
+    Public Property Get AverageExecutionTime() As Double
+        If m_CompletedTasks > 0 Then
+            AverageExecutionTime = m_TotalExecutionTime / m_CompletedTasks
+        End If
+    End Property
+    
+    Private Sub UpdateTaskStats(ByVal task As cTask)
+        m_CompletedTasks = m_CompletedTasks + 1
+        m_TotalExecutionTime = m_TotalExecutionTime + task.ExecutionTime
+    End Sub
+    
+    Private Sub SetError(ByVal ErrorNumber As Long, ByVal Description As String)
+        m_LastError = ErrorNumber
+        m_ErrorDescription = Description
     End Sub
 
 End Class
