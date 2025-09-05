@@ -49,6 +49,16 @@ Class cTask
     Private m_StateLock As LongPtr  ' 用于状态同步的互斥体
     Private m_StartTime As Currency  ' 用于记录任务开始时间
     Private m_EndTime As Currency    ' 用于记录任务结束时间
+    Private m_Priority As eTaskPriority  ' 任务优先级
+    Private m_MaxRetries As Long     ' 最大重试次数
+    Private m_RetryCount As Long     ' 当前重试次数
+    Private m_RetryDelay As Long     ' 重试间隔(毫秒)
+    Private m_TaskTimeout As Long    ' 任务超时时间(毫秒)
+    Private m_Dependencies As Collection  ' 任务依赖集合
+    Private m_Result As eTaskResult      ' 任务执行结果
+    Private m_OnComplete As LongPtr      ' 完成回调函数
+    Private m_OnError As LongPtr         ' 错误回调函数
+    Private m_LogFile As String          ' 日志文件路径
 
     ' 在类模块顶部添加（公共枚举）
     Public Enum eTaskWaitBehavior
@@ -63,6 +73,22 @@ Class cTask
     
         ' 超时后暂停线程（可恢复）
         TaskWait_PauseOnTimeout = 3
+    End Enum
+    
+    Public Enum eTaskPriority
+        Priority_Lowest = 0
+        Priority_Low = 1
+        Priority_Normal = 2
+        Priority_High = 3
+        Priority_Highest = 4
+    End Enum
+    
+    ' 任务执行结果枚举
+    Public Enum eTaskResult
+        TaskResult_Success = 0
+        TaskResult_Failed = 1
+        TaskResult_Cancelled = 2
+        TaskResult_TimedOut = 3
     End Enum
     ' ======================
     ' 初始化与清理
@@ -107,6 +133,14 @@ Class cTask
         m_IsRunning = False
         m_IsPaused = False
         m_CancelRequested = False
+        m_Priority = Priority_Normal
+        m_MaxRetries = 0
+        m_RetryCount = 0
+        m_RetryDelay = 1000
+        m_TaskTimeout = INFINITE
+        m_Result = TaskResult_Success
+        Set m_Dependencies = New Collection
+        m_LogFile = ""
         UnlockState
     End Sub
 
@@ -383,5 +417,194 @@ Class cTask
 
     Private Declare Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
     Private Declare Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
+    
+    ' 日志记录相关API
+    Private Declare Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
+    
+    '@Description "设置任务优先级"
+    Public Property Let Priority(ByVal Value As eTaskPriority)
+        LockState
+        m_Priority = Value
+        UnlockState
+    End Property
+    
+    '@Description "获取任务优先级"
+    Public Property Get Priority() As eTaskPriority
+        LockState
+        Priority = m_Priority
+        UnlockState
+    End Property
+    
+    '@Description "设置任务超时时间"
+    Public Sub SetTimeout(ByVal TimeoutMs As Long)
+        LockState
+        m_TaskTimeout = TimeoutMs
+        UnlockState
+    End Sub
+    
+    '@Description "设置重试参数"
+    Public Sub SetRetryPolicy(ByVal MaxRetries As Long, Optional ByVal RetryDelayMs As Long = 1000)
+        LockState
+        m_MaxRetries = MaxRetries
+        m_RetryDelay = RetryDelayMs
+        UnlockState
+    End Sub
+    
+    '@Description "添加任务依赖"
+    Public Sub AddDependency(ByVal Task As cTask)
+        LockState
+        m_Dependencies.Add Task
+        UnlockState
+    End Sub
+    
+    '@Description "检查所有依赖任务是否完成"
+    Private Function AreDependenciesMet() As Boolean
+        Dim task As cTask
+        For Each task In m_Dependencies
+            If task.IsRunning Then
+                AreDependenciesMet = False
+                Exit Function
+            End If
+        Next
+        AreDependenciesMet = True
+    End Function
+    
+    '@Description "设置完成回调"
+    Public Sub SetOnComplete(ByVal CallbackProc As LongPtr)
+        LockState
+        m_OnComplete = CallbackProc
+        UnlockState
+    End Sub
+    
+    '@Description "设置错误回调"
+    Public Sub SetOnError(ByVal CallbackProc As LongPtr)
+        LockState
+        m_OnError = CallbackProc
+        UnlockState
+    End Sub
+    
+    '@Description "启用日志记录"
+    Public Sub EnableLogging(ByVal LogFilePath As String)
+        LockState
+        m_LogFile = LogFilePath
+        WriteLog "Task logging enabled"
+        UnlockState
+    End Sub
+    
+    '@Description "写入日志"
+    Private Sub WriteLog(ByVal Message As String)
+        If m_LogFile = "" Then Exit Sub
+        
+        Dim fNum As Integer
+        fNum = FreeFile
+        
+        On Error Resume Next
+        Open m_LogFile For Append As #fNum
+        Print #fNum, Format$(Now, "yyyy-mm-dd hh:nn:ss") & " [PID:" & GetCurrentProcessId & "|TID:" & GetCurrentThreadId & "] " & Message
+        Close #fNum
+    End Sub
+    
+    '@Description "获取任务结果"
+    Public Property Get Result() As eTaskResult
+        LockState
+        Result = m_Result
+        UnlockState
+    End Property
+    
+    '@Description "获取当前重试次数"
+    Public Property Get RetryCount() As Long
+        LockState
+        RetryCount = m_RetryCount
+        UnlockState
+    End Property
+    
+    '@Description "执行任务（包含重试逻辑）"
+    Private Function ExecuteWithRetry() As Boolean
+        Dim success As Boolean
+        m_RetryCount = 0
+        
+        Do
+            WriteLog "Executing task (Attempt " & (m_RetryCount + 1) & " of " & (m_MaxRetries + 1) & ")"
+            
+            success = ExecuteTask()
+            
+            If success Then
+                WriteLog "Task executed successfully"
+                ExecuteWithRetry = True
+                Exit Function
+            End If
+            
+            m_RetryCount = m_RetryCount + 1
+            
+            If m_RetryCount <= m_MaxRetries Then
+                WriteLog "Task failed, retrying in " & m_RetryDelay & "ms"
+                Sleep m_RetryDelay
+            End If
+        Loop While m_RetryCount <= m_MaxRetries And Not m_CancelRequested
+        
+        If Not success Then
+            WriteLog "Task failed after " & m_RetryCount & " retries"
+        End If
+        
+        ExecuteWithRetry = success
+    End Function
+    
+    '@Description "任务实际执行逻辑"
+    Private Function ExecuteTask() As Boolean
+        On Error GoTo ErrorHandler
+        
+        ' 检查依赖
+        If Not AreDependenciesMet Then
+            WriteLog "Dependencies not met"
+            m_Result = TaskResult_Failed
+            Exit Function
+        End If
+        
+        ' 设置超时定时器（如果指定了超时）
+        Dim timeoutThread As LongPtr
+        If m_TaskTimeout <> INFINITE Then
+            timeoutThread = CreateThread(0, 0, AddressOf TimeoutProc, ObjPtr(Me), 0, 0)
+        End If
+        
+        ' 执行任务
+        Dim taskResult As Long
+        taskResult = CallWindowProc(m_TaskProcedure, ObjPtr(Me), 0, 0, 0)
+        
+        ' 清理超时线程
+        If timeoutThread <> 0 Then
+            TerminateThread timeoutThread, 0
+            CloseHandle timeoutThread
+        End If
+        
+        ' 调用完成回调
+        If m_OnComplete <> 0 Then
+            CallWindowProc m_OnComplete, ObjPtr(Me), taskResult, 0, 0
+        End If
+        
+        ExecuteTask = True
+        Exit Function
+        
+    ErrorHandler:
+        WriteLog "Error in ExecuteTask: " & Err.Description
+        m_LastError = Err.Number
+        m_ErrorDescription = Err.Description
+        m_Result = TaskResult_Failed
+        
+        ' 调用错误回调
+        If m_OnError <> 0 Then
+            CallWindowProc m_OnError, ObjPtr(Me), Err.Number, 0, 0
+        End If
+        
+        ExecuteTask = False
+    End Function
+    
+    Private Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" ( _
+        ByVal lpPrevWndFunc As LongPtr, _
+        ByVal hWnd As LongPtr, _
+        ByVal Msg As Long, _
+        ByVal wParam As LongPtr, _
+        ByVal lParam As LongPtr _
+    ) As Long
 
 End Class

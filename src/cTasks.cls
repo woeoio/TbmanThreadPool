@@ -3,14 +3,19 @@ Class cTasks
     '@Module
     '@Folder("Threading")
     '@Description "线程池管理器"
-    Private m_Tasks As Collection
-    Private m_MaxThreads As Long
-    Private m_ActiveThreads As Long
-    Private m_LastError As Long
-    Private m_ErrorDescription As String
-    Private m_CompletedTasks As Long
-    Private m_TotalExecutionTime As Double
-    Private m_State As ePoolState
+    Private m_Tasks As Collection            ' 所有任务的集合
+    Private m_PendingTasks As Collection     ' 待执行的任务队列
+    Private m_MaxThreads As Long             ' 最大线程数
+    Private m_MinThreads As Long             ' 最小线程数
+    Private m_ActiveThreads As Long          ' 活动线程数
+    Private m_LastError As Long              ' 最后错误码
+    Private m_ErrorDescription As String     ' 最后错误描述
+    Private m_CompletedTasks As Long         ' 已完成任务数
+    Private m_TotalExecutionTime As Double   ' 总执行时间
+    Private m_State As ePoolState            ' 线程池状态
+    Private m_LogFile As String              ' 日志文件路径
+    Private m_LoadFactor As Double           ' 负载因子
+    Private m_AutoScale As Boolean           ' 是否启用自动扩展
     
     Public Enum ePoolState
         PoolState_Running = 0
@@ -33,25 +38,64 @@ Class cTasks
     '@Description "初始化线程池"
     Friend Sub Initialize(Optional ByVal MaxThreads As Long = 0)
         Set m_Tasks = New Collection
+        Set m_PendingTasks = New Collection
         m_MaxThreads = MaxThreads
+        m_MinThreads = 1
         m_ActiveThreads = 0
+        m_CompletedTasks = 0
+        m_TotalExecutionTime = 0
+        m_State = PoolState_Running
+        m_LoadFactor = 0.75
+        m_AutoScale = False
+        m_LogFile = ""
     End Sub
 
     '@Description "添加新任务到线程池"
-    Public Function AddTask(ByVal TaskProcedure As LongPtr, Optional ByVal Tag As Variant, Optional ByVal StartImmediately As Boolean = True) As cTask
-        ' 检查是否达到最大线程数
-        If m_MaxThreads > 0 And m_ActiveThreads >= m_MaxThreads Then
-            Err.Raise vbObjectError + 2000, "cTasks.AddTask", "Maximum number of threads (" & m_MaxThreads & ") reached"
-        End If
-    
+    Public Function AddTask(ByVal TaskProcedure As LongPtr, _
+                          Optional ByVal Tag As Variant, _
+                          Optional ByVal StartImmediately As Boolean = True, _
+                          Optional ByVal Priority As eTaskPriority = Priority_Normal) As cTask
+        
+        ' 创建新任务
         Dim newTask As New cTask
-        newTask.Create(TaskProcedure, Tag, StartImmediately)
-    
-        m_Tasks.Add newTask
-        If newTask.IsRunning Then
-            m_ActiveThreads = m_ActiveThreads + 1
+        newTask.Create TaskProcedure, Tag, False ' 先不启动
+        newTask.Priority = Priority
+        
+        ' 如果启用了日志，为新任务也启用日志
+        If m_LogFile <> "" Then
+            newTask.EnableLogging m_LogFile
         End If
-    
+        
+        ' 添加到任务集合
+        m_Tasks.Add newTask
+        
+        WriteLog "New task added with priority " & Priority
+        
+        If StartImmediately Then
+            ' 如果有空闲线程，直接启动
+            If m_MaxThreads = 0 Or m_ActiveThreads < m_MaxThreads Then
+                newTask.Start
+                If newTask.IsRunning Then
+                    m_ActiveThreads = m_ActiveThreads + 1
+                    WriteLog "Task started immediately"
+                End If
+            Else
+                ' 否则加入待执行队列
+                AddToPendingQueue newTask
+                WriteLog "Task added to pending queue"
+            End If
+        Else
+            ' 加入待执行队列
+            AddToPendingQueue newTask
+            WriteLog "Task added to pending queue (start deferred)"
+        End If
+        
+        ' 调整线程池大小
+        AdjustPoolSize
+        
+        ' 处理待执行的任务
+        ProcessPendingTasks
+        
         Set AddTask = newTask
     End Function
 
@@ -240,6 +284,122 @@ Class cTasks
     Private Sub SetError(ByVal ErrorNumber As Long, ByVal Description As String)
         m_LastError = ErrorNumber
         m_ErrorDescription = Description
+        WriteLog "Error: " & Description
     End Sub
+    
+    '@Description "启用日志记录"
+    Public Sub EnableLogging(ByVal LogFilePath As String)
+        m_LogFile = LogFilePath
+        WriteLog "Thread pool logging enabled"
+        
+        ' 为所有任务启用日志
+        Dim task As cTask
+        For Each task In m_Tasks
+            task.EnableLogging LogFilePath
+        Next
+    End Sub
+    
+    '@Description "写入日志"
+    Private Sub WriteLog(ByVal Message As String)
+        If m_LogFile = "" Then Exit Sub
+        
+        Dim fNum As Integer
+        fNum = FreeFile
+        
+        On Error Resume Next
+        Open m_LogFile For Append As #fNum
+        Print #fNum, Format$(Now, "yyyy-mm-dd hh:nn:ss") & " [Pool] " & Message
+        Close #fNum
+    End Sub
+    
+    '@Description "设置线程池自动扩展"
+    Public Sub SetAutoScale(ByVal Enable As Boolean, Optional ByVal MinThreads As Long = 1, Optional ByVal LoadFactor As Double = 0.75)
+        m_AutoScale = Enable
+        m_MinThreads = MinThreads
+        m_LoadFactor = LoadFactor
+        WriteLog "AutoScale " & IIf(Enable, "enabled", "disabled") & " (MinThreads=" & MinThreads & ", LoadFactor=" & LoadFactor & ")"
+    End Sub
+    
+    '@Description "调整线程池大小"
+    Private Sub AdjustPoolSize()
+        If Not m_AutoScale Then Exit Sub
+        
+        ' 计算当前负载
+        Dim currentLoad As Double
+        currentLoad = m_ActiveThreads / m_MaxThreads
+        
+        ' 如果负载过高，增加线程数
+        If currentLoad > m_LoadFactor Then
+            Dim newMaxThreads As Long
+            newMaxThreads = m_MaxThreads * 2
+            WriteLog "Expanding pool size from " & m_MaxThreads & " to " & newMaxThreads & " threads"
+            m_MaxThreads = newMaxThreads
+        ' 如果负载过低，减少线程数（但不低于最小线程数）
+        ElseIf currentLoad < (m_LoadFactor / 2) And m_MaxThreads > m_MinThreads Then
+            newMaxThreads = Max(m_MinThreads, m_MaxThreads \ 2)
+            WriteLog "Shrinking pool size from " & m_MaxThreads & " to " & newMaxThreads & " threads"
+            m_MaxThreads = newMaxThreads
+        End If
+    End Sub
+    
+    '@Description "按优先级添加任务"
+    Private Sub AddToPendingQueue(ByVal Task As cTask)
+        Dim i As Long
+        Dim currentTask As cTask
+        
+        ' 按优先级插入队列
+        For i = 1 To m_PendingTasks.Count
+            Set currentTask = m_PendingTasks(i)
+            If Task.Priority > currentTask.Priority Then
+                m_PendingTasks.Add Task, , i
+                Exit Sub
+            End If
+        Next
+        
+        ' 如果没有找到合适的位置，添加到末尾
+        m_PendingTasks.Add Task
+    End Sub
+    
+    '@Description "处理待执行的任务"
+    Private Sub ProcessPendingTasks()
+        If m_PendingTasks.Count = 0 Then Exit Sub
+        
+        ' 检查是否可以执行更多任务
+        If m_MaxThreads > 0 And m_ActiveThreads >= m_MaxThreads Then Exit Sub
+        
+        ' 获取下一个要执行的任务
+        Dim nextTask As cTask
+        Set nextTask = m_PendingTasks(1)
+        m_PendingTasks.Remove 1
+        
+        ' 启动任务
+        nextTask.Start
+        If nextTask.IsRunning Then
+            m_ActiveThreads = m_ActiveThreads + 1
+        End If
+        
+        ' 调整线程池大小
+        AdjustPoolSize
+    End Sub
+    
+    '@Description "获取线程池统计信息"
+    Public Function GetPoolStats() As String
+        Dim stats As String
+        stats = "Thread Pool Statistics:" & vbCrLf & _
+               "Active Threads: " & m_ActiveThreads & "/" & m_MaxThreads & vbCrLf & _
+               "Pending Tasks: " & m_PendingTasks.Count & vbCrLf & _
+               "Completed Tasks: " & m_CompletedTasks & vbCrLf & _
+               "Average Execution Time: " & Format$(AverageExecutionTime, "0.00") & "ms" & vbCrLf & _
+               "Auto-Scale: " & IIf(m_AutoScale, "Enabled", "Disabled")
+        GetPoolStats = stats
+    End Function
+    
+    Private Function Max(ByVal a As Long, ByVal b As Long) As Long
+        If a > b Then
+            Max = a
+        Else
+            Max = b
+        End If
+    End Function
 
 End Class
