@@ -59,6 +59,8 @@ Class cTask
     Private m_OnComplete As LongPtr      ' 完成回调函数
     Private m_OnError As LongPtr         ' 错误回调函数
     Private m_LogFile As String          ' 日志文件路径
+    Private m_TaskData As Collection     ' 任务输入参数集合
+    Private m_TaskResult As Collection   ' 任务结果集合
 
     ' 在类模块顶部添加（公共枚举）
     Public Enum eTaskWaitBehavior
@@ -96,6 +98,8 @@ Class cTask
 
     Private Sub Class_Initialize()
         m_StateLock = CreateMutex(0, False, 0)
+        Set m_TaskData = New Collection
+        Set m_TaskResult = New Collection
     End Sub
 
     Private Sub Class_Terminate()
@@ -107,6 +111,8 @@ Class cTask
             CloseHandle m_StateLock
             m_StateLock = 0
         End If
+        Set m_TaskData = Nothing
+        Set m_TaskResult = Nothing
     End Sub
 
     ' ======================
@@ -562,6 +568,114 @@ Class cTask
         RetryCount = m_RetryCount
         UnlockState
     End Property
+    
+    '@Description "设置任务输入参数"
+    Public Sub SetTaskData(ByVal Key As String, ByVal Value As Variant)
+        LockState
+        On Error Resume Next
+        m_TaskData.Remove Key
+        On Error GoTo ErrorHandler
+        m_TaskData.Add Value, Key
+        UnlockState
+        Exit Sub
+        
+    ErrorHandler:
+        UnlockState
+        Err.Raise Err.Number, "cTask.SetTaskData", "无法设置任务参数: " & Err.Description
+    End Sub
+    
+    '@Description "获取任务输入参数"
+    Public Function GetTaskData(ByVal Key As String) As Variant
+        LockState
+        On Error GoTo ErrorHandler
+        If IsObject(m_TaskData(Key)) Then
+            Set GetTaskData = m_TaskData(Key)
+        Else
+            GetTaskData = m_TaskData(Key)
+        End If
+        UnlockState
+        Exit Function
+        
+    ErrorHandler:
+        UnlockState
+        Err.Raise Err.Number, "cTask.GetTaskData", "无法获取任务参数: " & Err.Description
+    End Function
+    
+    '@Description "设置任务结果"
+    Public Sub SetTaskResult(ByVal Key As String, ByVal Value As Variant)
+        LockState
+        On Error Resume Next
+        m_TaskResult.Remove Key
+        On Error GoTo ErrorHandler
+        m_TaskResult.Add Value, Key
+        UnlockState
+        Exit Sub
+        
+    ErrorHandler:
+        UnlockState
+        Err.Raise Err.Number, "cTask.SetTaskResult", "无法设置任务结果: " & Err.Description
+    End Sub
+    
+    '@Description "获取任务结果"
+    Public Function GetTaskResult(ByVal Key As String) As Variant
+        LockState
+        On Error GoTo ErrorHandler
+        If IsObject(m_TaskResult(Key)) Then
+            Set GetTaskResult = m_TaskResult(Key)
+        Else
+            GetTaskResult = m_TaskResult(Key)
+        End If
+        UnlockState
+        Exit Function
+        
+    ErrorHandler:
+        UnlockState
+        Err.Raise Err.Number, "cTask.GetTaskResult", "无法获取任务结果: " & Err.Description
+    End Function
+    
+    '@Description "清除任务数据"
+    Public Sub ClearTaskData()
+        LockState
+        Set m_TaskData = New Collection
+        UnlockState
+    End Sub
+    
+    '@Description "清除任务结果"
+    Public Sub ClearTaskResults()
+        LockState
+        Set m_TaskResult = New Collection
+        UnlockState
+    End Sub
+    
+    '@Description "获取所有任务数据键"
+    Public Function GetTaskDataKeys() As Collection
+        Dim result As New Collection
+        Dim item As Variant
+        Dim i As Long
+        
+        LockState
+        For i = 1 To m_TaskData.Count
+            result.Add m_TaskData(i)
+        Next i
+        UnlockState
+        
+        Set GetTaskDataKeys = result
+    End Function
+    
+    '@Description "获取所有任务结果键"
+    Public Function GetTaskResultKeys() As Collection
+        Dim result As New Collection
+        Dim item As Variant
+        Dim i As Long
+        
+        LockState
+        For i = 1 To m_TaskResult.Count
+            result.Add m_TaskResult(i)
+        Next i
+        UnlockState
+        
+        Set GetTaskResultKeys = result
+    End Function
     
     '@Description "执行任务（包含重试逻辑）"
     Private Function ExecuteWithRetry() As Boolean
