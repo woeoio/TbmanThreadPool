@@ -145,17 +145,22 @@ Class cTask
     End Sub
 
     '@Description "启动线程"
-    Public Sub Start()
-        LockState
-        On Error GoTo ErrorHandler
-    
+    Public Function Start() As Boolean
+        Dim success As Boolean
+        
+        If Not TryWithLock("Start", success) Then
+            WriteLog "Failed to acquire lock in Start"
+            Start = False
+            Exit Function
+        End If
+        
         If m_IsRunning Then
-            UnlockState
-            Exit Sub
+            Start = True ' 已经在运行，视为成功
+            Exit Function
         End If
         
         QueryPerformanceCounter m_StartTime
-    
+        
         m_CancelRequested = False
         m_ThreadHandle = CreateThread( _
             ByVal 0&, _
@@ -165,22 +170,18 @@ Class cTask
             ByVal 0&, _
             m_ThreadID _
         )
-    
+        
         If m_ThreadHandle = 0 Then
             m_LastError = Err.LastDllError
             m_ErrorDescription = "Failed to create thread"
-            Err.Raise vbObjectError + 1000, "cTask.Start", "Thread creation failed with error: " & m_LastError
-        Else
-            m_IsRunning = True
+            WriteLog "Thread creation failed with error: " & m_LastError
+            Start = False
+            Exit Function
         End If
-    
-        UnlockState
-        Exit Sub
-    
-    ErrorHandler:
-        UnlockState
-        Err.Raise Err.Number, Err.Source, Err.Description
-    End Sub
+        
+        m_IsRunning = True
+        Start = True
+    End Function
 
     ' ======================
     ' 线程控制方法
@@ -393,13 +394,56 @@ Class cTask
     ' 私有方法
     ' ======================
 
-    Private Sub LockState()
-        WaitForSingleObject m_StateLock, INFINITE
-    End Sub
+    Private Function LockState(Optional ByVal TimeoutMs As Long = 5000) As Boolean
+        Dim result As Long
+        result = WaitForSingleObject(m_StateLock, TimeoutMs)
+        
+        Select Case result
+            Case WAIT_OBJECT_0
+                ' 成功获取锁
+                LockState = True
+            
+            Case WAIT_TIMEOUT
+                ' 获取锁超时
+                WriteLog "Lock acquisition timed out after " & TimeoutMs & "ms"
+                LockState = False
+            
+            Case WAIT_FAILED
+                ' 获取锁失败
+                m_LastError = Err.LastDllError
+                m_ErrorDescription = "Failed to acquire lock"
+                WriteLog "Lock acquisition failed with error: " & m_LastError
+                LockState = False
+        End Select
+    End Function
 
     Private Sub UnlockState()
         ReleaseMutex m_StateLock
     End Sub
+    
+    '@Description "尝试执行受保护的操作"
+    Private Function TryWithLock(ByVal Action As String, ByRef Result As Boolean) As Boolean
+        Result = False
+        
+        ' 尝试获取锁
+        If Not LockState() Then
+            WriteLog "Failed to acquire lock for action: " & Action
+            Exit Function
+        End If
+        
+        On Error GoTo ErrorHandler
+        Result = True ' 将在实际操作中被重写
+        TryWithLock = True
+        
+    ExitFunction:
+        UnlockState
+        Exit Function
+        
+    ErrorHandler:
+        WriteLog "Error in " & Action & ": " & Err.Description
+        Result = False
+        Resume ExitFunction
+    End Function
     
     '@Description "获取任务执行时间(毫秒)"
     Public Property Get ExecutionTime() As Double
