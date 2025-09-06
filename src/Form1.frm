@@ -4,34 +4,22 @@
 Class Form1
     ' 线程过程示例
     Function ThreadProc(ByVal param As LongPtr) As Long
-        Dim t As cThread
+        Dim t As cThread '从指针还原线程对象，可以使用对象成员
         Set t = mThread.ReturnFromPtr(param)
-        
-        ' 一次性获取所有需要的信息，减少锁竞争
-        Dim threadHandle As LongPtr
-        Dim threadID As Long
-        Dim tag As Variant
-        
-        ' 获取信息（这会触发锁）
-        threadHandle = t.ThreadHandle
-        threadID = t.ThreadID
-        tag = t.Tag
-        
+        ' 一次性获取所有需要的信息，避免循环体内获取，减少锁竞争
+        Dim threadHandle As LongPtr = t.ThreadHandle
+        Dim threadID As Long = t.ThreadID
+        Dim tag As Variant = t.Tag
         ' 执行工作循环（不再访问需要锁的属性）
         Dim i As Long
         For i = 1 To 5
             Debug.Print i, threadHandle, threadID, tag
-            
             ' 只在需要时检查取消状态
-            If i Mod 2 = 0 Then  ' 减少检查频率
-                If t.CancelRequested Then Exit For
-            End If
-            
+            If t.CancelRequested Then Exit For
             ' 模拟一些实际工作
             Dim j As Long
             For j = 1 To 1000000: Next j  ' 简单的CPU工作
         Next
-        
         ThreadProc = 0
     End Function
     Private Sub Command1_Click()
@@ -48,7 +36,7 @@ Class Form1
             Task.EnableLogging(App.Path & "\trace.log")
         Next
         ' 线程是异步的，如果需要同步流程，可WaitForAll等待所有任务
-        pool.WaitForAll 5000  ' 等待5秒
+        pool.WaitForAll 5000  ' 等待5秒（可选）
         ' 确保任务完全清理
         Set pool = Nothing
         Set Task = Nothing
