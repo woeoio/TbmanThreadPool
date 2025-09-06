@@ -97,20 +97,36 @@ Class cTask
     ' ======================
 
     Private Sub Class_Initialize()
-        m_StateLock = CreateMutex(0, False, 0)
+        ' 创建一个命名互斥锁，以对象指针作为唯一标识
+        m_StateLock = CreateMutex(0, False, "TB_Task_" & ObjPtr(Me))
+        If m_StateLock = 0 Then
+            m_LastError = Err.LastDllError
+            m_ErrorDescription = "Failed to create mutex"
+            WriteLog "Failed to create mutex: " & m_LastError
+        End If
         Set m_TaskData = New Collection
         Set m_TaskResult = New Collection
     End Sub
 
     Private Sub Class_Terminate()
+        On Error Resume Next
+        
+        ' 先尝试释放锁，以免其他线程还在等待
+        If m_StateLock <> 0 Then
+            ReleaseMutex m_StateLock
+        End If
+        
         ' 确保线程终止并清理资源
         If m_IsRunning Then
             Terminate
         End If
+        
+        ' 最后关闭互斥锁句柄
         If m_StateLock <> 0 Then
             CloseHandle m_StateLock
             m_StateLock = 0
         End If
+        
         Set m_TaskData = Nothing
         Set m_TaskResult = Nothing
     End Sub
@@ -366,23 +382,20 @@ Class cTask
 
     '@Description "获取线程TAG"
     Public Property Get Tag() As Variant
-        LockState
+        ' Tag 通常在初始化后不变，不需要锁
         Tag = m_Tag
-        UnlockState
     End Property
     
     '@Description "获取线程ID"
     Public Property Get ThreadID() As LongPtr
-        LockState
+        ' ThreadID 在线程创建后不变，不需要锁
         ThreadID = m_ThreadID
-        UnlockState
     End Property
     
     '@Description "获取线程句柄"
     Public Property Get ThreadHandle() As LongPtr
-        LockState
+        ' ThreadHandle 在线程创建后不变，不需要锁
         ThreadHandle = m_ThreadHandle
-        UnlockState
     End Property
 
     '@Description "安全获取线程句柄"
@@ -401,6 +414,20 @@ Class cTask
     ' ======================
 
     Private Function LockState(Optional ByVal TimeoutMs As Long = 5000) As Boolean
+        On Error Resume Next
+        
+        ' 检查互斥锁是否有效
+        If m_StateLock = 0 Then
+            ' 尝试重新创建互斥锁
+            m_StateLock = CreateMutex(0, False, "TB_Task_" & ObjPtr(Me))
+            If m_StateLock = 0 Then
+                WriteLog "Failed to recreate mutex: " & Err.LastDllError
+                LockState = False
+                Exit Function
+            End If
+        End If
+        
+        ' 尝试获取锁
         Dim result As Long
         result = WaitForSingleObject(m_StateLock, TimeoutMs)
         
@@ -419,12 +446,32 @@ Class cTask
                 m_LastError = Err.LastDllError
                 m_ErrorDescription = "Failed to acquire lock"
                 WriteLog "Lock acquisition failed with error: " & m_LastError
-                LockState = False
+                
+                ' 如果是无效句柄，尝试重新创建
+                If m_LastError = 6 Then  ' ERROR_INVALID_HANDLE
+                    CloseHandle m_StateLock
+                    m_StateLock = CreateMutex(0, False, "TB_Task_" & ObjPtr(Me))
+                    If m_StateLock <> 0 Then
+                        ' 重试一次
+                        result = WaitForSingleObject(m_StateLock, TimeoutMs)
+                        LockState = (result = WAIT_OBJECT_0)
+                    End If
+                End If
+                
+                If Not LockState Then
+                    WriteLog "Lock retry failed"
+                End If
         End Select
     End Function
 
     Private Sub UnlockState()
-        ReleaseMutex m_StateLock
+        On Error Resume Next
+        If m_StateLock <> 0 Then
+            ReleaseMutex m_StateLock
+            If Err.LastDllError = 6 Then  ' ERROR_INVALID_HANDLE
+                m_StateLock = 0  ' 标记为无效，下次会重新创建
+            End If
+        End If
     End Sub
     
     '@Description "尝试执行受保护的操作"
@@ -453,6 +500,7 @@ Class cTask
     
     '@Description "获取任务执行时间(毫秒)"
     Public Property Get ExecutionTime() As Double
+        ' 时间读取是原子操作，不需要锁
         Dim freq As Currency
         QueryPerformanceFrequency freq
         
@@ -800,9 +848,8 @@ Class cTask
     
     '@Description "获取超时时间"
     Public Function GetTimeout() As Long
-        LockState
+        ' 超时时间通常在设置后不变，不需要锁
         GetTimeout = m_TaskTimeout
-        UnlockState
     End Function
     
     '@Description "任务是否超时"

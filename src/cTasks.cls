@@ -3,9 +3,15 @@ Class cTasks
     '@Module
     '@Folder("Threading")
     '@Description "线程池管理器"
+    
+    ' API 声明
+    Private Declare Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
+    Private Declare Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
+    
     Private m_Tasks As Collection            ' 所有任务的集合
     Private m_PendingTasks As Collection     ' 待执行的任务队列
     Private m_MaxThreads As Long             ' 最大线程数
+    Private m_IsTerminating As Boolean       ' 是否正在终止
     Private m_MinThreads As Long             ' 最小线程数
     Private m_ActiveThreads As Long          ' 活动线程数
     Private m_LastError As Long              ' 最后错误码
@@ -158,6 +164,10 @@ Class cTasks
 
     '@Description "终止所有任务"
     Public Sub TerminateAll()
+        If m_IsTerminating Then Exit Sub
+        m_IsTerminating = True
+        
+        ' 终止所有运行中的任务
         Dim task As cTask
         For Each task In m_Tasks
             If task.IsRunning Then
@@ -165,6 +175,17 @@ Class cTasks
                 m_ActiveThreads = m_ActiveThreads - 1
             End If
         Next
+        
+        ' 清空集合
+        Set m_Tasks = New Collection
+        Set m_PendingTasks = New Collection
+        m_State = PoolState_Stopped
+        
+        m_IsTerminating = False
+    End Sub
+    
+    Private Sub Class_Terminate()
+        TerminateAll
     End Sub
 
     '@Description "等待所有任务完成"
@@ -172,6 +193,10 @@ Class cTasks
         Dim handles() As LongPtr
         Dim count As Long
         Dim task As cTask
+        Dim startTime As Currency
+        
+        QueryPerformanceCounter startTime
+        WriteLog "WaitForAll started, timeout=" & TimeoutMs & "ms"
     
         ' 收集所有运行中任务的句柄
         count = 0
@@ -179,22 +204,76 @@ Class cTasks
             If task.IsRunning Then
                 ReDim Preserve handles(0 To count)
                 handles(count) = task.SafeThreadHandle
-                count = count + 1
+                If handles(count) <> 0 Then
+                    count = count + 1
+                    WriteLog "Added running task to wait list, handle=" & handles(count - 1)
+                End If
             End If
         Next
+        
+        WriteLog "Total running tasks to wait for: " & count
     
         If count > 0 Then
             ' 使用WaitForMultipleObjects等待所有线程
             Dim result As Long
             result = WaitForMultipleObjects(count, handles(0), True, TimeoutMs)
+            
+            Dim endTime As Currency
+            QueryPerformanceCounter endTime
+            Dim freq As Currency
+            QueryPerformanceFrequency freq
+            Dim elapsed As Double
+            elapsed = (endTime - startTime) / freq * 1000
+            
+            WriteLog "WaitForMultipleObjects result=" & result & ", elapsed=" & Format$(elapsed, "0.0") & "ms"
         
-            If result = WAIT_FAILED Then
-                Err.Raise vbObjectError + 2001, "cTasks.WaitForAll", "WaitForMultipleObjects failed with error: " & Err.LastDllError
-            End If
+            Select Case result
+                Case WAIT_OBJECT_0 To WAIT_OBJECT_0 + count - 1
+                    WriteLog "All tasks completed successfully"
+                Case WAIT_TIMEOUT
+                    WriteLog "WaitForAll timed out after " & TimeoutMs & "ms"
+                    ' 检查哪些任务还在运行
+                    CheckStillRunningTasks
+                Case WAIT_FAILED
+                    WriteLog "WaitForMultipleObjects failed with error: " & Err.LastDllError
+                    Err.Raise vbObjectError + 2001, "cTasks.WaitForAll", "WaitForMultipleObjects failed with error: " & Err.LastDllError
+            End Select
         
             ' 更新活动线程计数
-            m_ActiveThreads = m_ActiveThreads - count
+            UpdateActiveThreadCount
+        Else
+            WriteLog "No running tasks to wait for"
         End If
+    End Sub
+    
+    Private Sub CheckStillRunningTasks()
+        Dim task As cTask
+        Dim runningCount As Long
+        runningCount = 0
+        
+        For Each task In m_Tasks
+            If task.IsRunning Then
+                runningCount = runningCount + 1
+                WriteLog "Task still running: ThreadID=" & task.ThreadID & ", Handle=" & task.ThreadHandle
+            End If
+        Next
+        
+        WriteLog "Total tasks still running: " & runningCount
+    End Sub
+    
+    Private Sub UpdateActiveThreadCount()
+        Dim task As cTask
+        Dim actualRunning As Long
+        actualRunning = 0
+        
+        For Each task In m_Tasks
+            If task.IsRunning Then
+                actualRunning = actualRunning + 1
+            End If
+        Next
+        
+        m_ActiveThreads = actualRunning
+        WriteLog "Updated active thread count to: " & m_ActiveThreads
     End Sub
 
     '@Description "获取任务数量"
