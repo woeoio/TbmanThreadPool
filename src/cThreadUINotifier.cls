@@ -5,19 +5,20 @@ Class cThreadUINotifier
     '@Description "UI线程通知管理器 - 负责处理子线程到UI线程的消息传递"
 
     ' Windows API 声明
-    Private Declare PtrSafe Function RegisterClassEx Lib "user32" Alias "RegisterClassExA" (ByRef pcWndClassEx As WNDCLASSEX) As Integer
-    Private Declare PtrSafe Function CreateWindowEx Lib "user32" Alias "CreateWindowExA" ( _
-        ByVal dwExStyle As Long, ByVal lpClassName As String, ByVal lpWindowName As String, _
+    Private Declare PtrSafe Function RegisterClassEx Lib "user32" Alias "RegisterClassExW" (ByRef pcWndClassEx As WNDCLASSEX) As Integer
+    Private Declare PtrSafe Function CreateWindowEx Lib "user32" Alias "CreateWindowExW" ( _
+        ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, ByVal lpWindowName As LongPtr, _
         ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, _
         ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, _
         ByVal hInstance As LongPtr, ByVal lpParam As LongPtr) As LongPtr
     Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
-    Private Declare PtrSafe Function DefWindowProc Lib "user32" Alias "DefWindowProcA" ( _
+    Private Declare PtrSafe Function DefWindowProc Lib "user32" Alias "DefWindowProcW" ( _
         ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
-    Private Declare PtrSafe Function PostMessage Lib "user32" Alias "PostMessageA" ( _
+    Private Declare PtrSafe Function PostMessage Lib "user32" Alias "PostMessageW" ( _
         ByVal hWnd As LongPtr, ByVal wMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As Long
-    Private Declare PtrSafe Function GetModuleHandle Lib "kernel32" Alias "GetModuleHandleA" (ByVal lpModuleName As String) As LongPtr
-    Private Declare PtrSafe Function UnregisterClass Lib "user32" Alias "UnregisterClassA" (ByVal lpClassName As String, ByVal hInstance As LongPtr) As Long
+    Private Declare PtrSafe Function GetModuleHandle Lib "kernel32" Alias "GetModuleHandleW" (ByVal lpModuleName As LongPtr) As LongPtr
+    Private Declare PtrSafe Function UnregisterClass Lib "user32" Alias "UnregisterClassW" (ByVal lpClassName As LongPtr, ByVal hInstance As LongPtr) As Long
+    Private Declare PtrSafe Function GetLastError Lib "kernel32" () As Long
 
     ' 常量定义
     Private Const WM_USER As Long = &H400
@@ -82,8 +83,9 @@ Class cThreadUINotifier
     
     Private Sub Class_Initialize()
         Set m_NotificationData = New Collection
-        m_ClassName = "TBThreadNotifier_" & ObjPtr(Me)
-        m_hInstance = GetModuleHandle(vbNullString)
+        ' 使用简单的英文类名，避免编码问题
+        m_ClassName = "TBThreadNotifier" & ObjPtr(Me)
+        m_hInstance = GetModuleHandle(0)  ' 使用 0 代替 vbNullString
         m_NotificationCounter = 0
         
         ' 自动初始化UI通知器
@@ -100,32 +102,101 @@ Class cThreadUINotifier
         Initialize = m_IsInitialized
     End Function
     
+    '@Description "强制重新初始化UI通知器（用于错误恢复）"
+    Public Function ForceReinitialize() As Boolean
+        On Error GoTo ErrorHandler
+        
+        ' 先清理现有资源
+        Cleanup
+        
+        ' 重置状态
+        m_IsInitialized = False
+        m_MessageWindow = 0
+        m_NotificationCounter = 0
+        Set m_NotificationData = New Collection
+        
+        ' 重新生成类名（避免类名冲突）
+        m_ClassName = "TBThreadNotifier" & ObjPtr(Me) & CStr(Timer * 1000)
+        
+        ' 重新初始化
+        AutoInitialize
+        
+        ForceReinitialize = m_IsInitialized
+        Exit Function
+        
+    ErrorHandler:
+        ForceReinitialize = False
+    End Function
+    
     '@Description "自动初始化UI通知器"
     Private Sub AutoInitialize()
         If m_IsInitialized Then Exit Sub
         
+        On Error GoTo ErrorHandler
+        
+        ' 检查模块句柄
+        If m_hInstance = 0 Then
+            Err.Raise vbObjectError + 1001, "cThreadUINotifier.AutoInitialize", _
+                     "无法获取模块句柄：GetModuleHandle 失败"
+        End If
+        
         ' 注册窗口类
         Dim wc As WNDCLASSEX
         wc.cbSize = LenB(wc)
-        wc.lpfnWndProc = GetAddressOf_MessageWindowProc()
+        wc.lpfnWndProc = AddressOf MessageWindowProc
         wc.hInstance = m_hInstance
         wc.lpszClassName = StrPtr(m_ClassName)
         
-        If RegisterClassEx(wc) = 0 Then
-            Exit Sub
+        ' 添加调试信息
+        Debug.Print "注册窗口类："
+        Debug.Print "- ClassName: " & m_ClassName
+        Debug.Print "- hInstance: " & m_hInstance
+        Debug.Print "- lpfnWndProc: " & wc.lpfnWndProc
+        
+        Dim regResult As Integer
+        regResult = RegisterClassEx(wc)
+        If regResult = 0 Then
+            Dim lastError As Long
+            lastError = GetLastError()
+            Err.Raise vbObjectError + 1003, "cThreadUINotifier.AutoInitialize", _
+                     "窗口类注册失败：RegisterClassEx 返回 0，LastError=" & lastError & _
+                     "，ClassName=" & m_ClassName & "，hInstance=" & m_hInstance
         End If
         
-        ' 创建隐藏的消息窗口
-        m_MessageWindow = CreateWindowEx(0, m_ClassName, "ThreadNotifier", _
+        Debug.Print "窗口类注册成功，返回值: " & regResult
+        
+        ' 创建隐藏的消息窗口 - 确保使用相同的参数
+        Debug.Print "创建消息窗口，使用 ClassName: " & m_ClassName & "，hInstance: " & m_hInstance
+        m_MessageWindow = CreateWindowEx(0, StrPtr(m_ClassName), StrPtr("ThreadNotifier"), _
                                        WS_POPUP Or WS_DISABLED, 0, 0, 0, 0, _
                                        0, 0, m_hInstance, 0)
         
         If m_MessageWindow = 0 Then
-            UnregisterClass m_ClassName, m_hInstance
-            Exit Sub
+            Dim createError As Long
+            createError = GetLastError()
+            ' 清理已注册的窗口类
+            UnregisterClass StrPtr(m_ClassName), m_hInstance
+            Err.Raise vbObjectError + 1004, "cThreadUINotifier.AutoInitialize", _
+                     "消息窗口创建失败：CreateWindowEx 返回 0，LastError=" & createError & _
+                     "，ClassName=" & m_ClassName & "，hInstance=" & m_hInstance
         End If
         
         m_IsInitialized = True
+        Exit Sub
+        
+    ErrorHandler:
+        ' 确保清理资源
+        If m_MessageWindow <> 0 Then
+            DestroyWindow m_MessageWindow
+            m_MessageWindow = 0
+        End If
+        If m_ClassName <> "" Then
+            UnregisterClass StrPtr(m_ClassName), m_hInstance
+        End If
+        m_IsInitialized = False
+        
+        ' 重新抛出错误
+        Err.Raise Err.Number, Err.Source, Err.Description
     End Sub
     
     '@Description "清理资源"
@@ -136,7 +207,7 @@ Class cThreadUINotifier
         End If
         
         If m_ClassName <> "" Then
-            UnregisterClass m_ClassName, m_hInstance
+            UnregisterClass StrPtr(m_ClassName), m_hInstance
             m_ClassName = ""
         End If
         
@@ -158,9 +229,40 @@ Class cThreadUINotifier
         IsInitialized = m_IsInitialized
     End Property
     
+    '@Description "获取初始化详细状态信息（用于调试）"
+    Public Function GetInitializationStatus() As String
+        Dim status As String
+        status = "UI通知器状态：" & vbCrLf
+        status = status & "- 是否已初始化：" & m_IsInitialized & vbCrLf
+        status = status & "- 消息窗口句柄：" & m_MessageWindow & vbCrLf
+        status = status & "- 窗口类名：" & m_ClassName & vbCrLf
+        status = status & "- 模块句柄：" & m_hInstance & vbCrLf
+        status = status & "- 通知数据计数器：" & m_NotificationCounter & vbCrLf
+        
+        If m_NotificationData Is Nothing Then
+            status = status & "- 通知数据集合：未初始化" & vbCrLf
+        Else
+            status = status & "- 通知数据集合：已初始化，包含 " & m_NotificationData.Count & " 项" & vbCrLf
+        End If
+        
+        GetInitializationStatus = status
+    End Function
+    
     '@Description "发送通知到UI线程（供子线程调用）"
     Public Sub PostNotification(ByVal TaskId As String, ByVal NotificationCode As Long, Optional ByVal Data As Variant)
-        If Not m_IsInitialized Then Exit Sub
+        ' 检查初始化状态
+        If Not m_IsInitialized Then
+            Err.Raise vbObjectError + 1006, "cThreadUINotifier.PostNotification", _
+                     "UI通知器未成功初始化，无法发送通知。请检查初始化过程或调用 ForceReinitialize 方法。" & vbCrLf & _
+                     "当前状态：" & vbCrLf & GetInitializationStatus()
+        End If
+        
+        ' 验证消息窗口句柄
+        If m_MessageWindow = 0 Then
+            Err.Raise vbObjectError + 1007, "cThreadUINotifier.PostNotification", _
+                     "消息窗口句柄无效（为0），无法发送通知。" & vbCrLf & _
+                     "当前状态：" & vbCrLf & GetInitializationStatus()
+        End If
         
         ' 创建通知数据对象
         Dim notifyData As New cThreadUINotificationData
@@ -220,12 +322,6 @@ Class cThreadUINotifier
     ' ======================
     ' 内部方法
     ' ======================
-    
-    '@Description "获取消息处理过程的地址"
-    Private Function GetAddressOf_MessageWindowProc() As LongPtr
-        ' 在 TwinBasic 中使用 AddressOf 操作符
-        GetAddressOf_MessageWindowProc = AddressOf MessageWindowProc
-    End Function
     
     '@Description "消息窗口过程"
     Private Function MessageWindowProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, _
