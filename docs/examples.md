@@ -68,7 +68,7 @@ Public Function TaskCompleted(ByVal taskPtr As LongPtr, _
                             ByVal wParam As LongPtr, _
                             ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mTask.ObjectFromPtr(taskPtr)
+    Set task = mThread.ObjectFromPtr(taskPtr)
     
     Debug.Print "任务完成：" & task.Tag
     Debug.Print "执行时间：" & task.ExecutionTime & "ms"
@@ -82,7 +82,7 @@ Public Function TaskError(ByVal taskPtr As LongPtr, _
                          ByVal wParam As LongPtr, _
                          ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mTask.ObjectFromPtr(taskPtr)
+    Set task = mThread.ObjectFromPtr(taskPtr)
     
     Debug.Print "任务错误：" & task.ErrorDescription
     
@@ -300,7 +300,7 @@ Public Function CustomErrorHandler(ByVal taskPtr As LongPtr, _
                                  ByVal wParam As LongPtr, _
                                  ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mTask.ObjectFromPtr(taskPtr)
+    Set task = mThread.ObjectFromPtr(taskPtr)
     
     Select Case errorCode
         Case 1001  ' 自定义错误码

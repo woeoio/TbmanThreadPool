@@ -1,4 +1,4 @@
-Module mTask
+Module mThread
 
     ' Windows API 声明
     Public Declare Function CreateThread Lib "kernel32" ( _

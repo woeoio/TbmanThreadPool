@@ -69,7 +69,7 @@ Public Function OnError(ByVal taskPtr As LongPtr, _
                        ByVal wParam As LongPtr, _
                        ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mTask.ObjectFromPtr(taskPtr)
+    Set task = mThread.ObjectFromPtr(taskPtr)
     
     ' 记录错误
     Debug.Print "任务失败：" & task.ErrorDescription
@@ -213,7 +213,7 @@ End If
 ' 支持取消的任务过程
 Public Function CancellableProc(ByVal param As Variant) As Long
     Dim task As cThread
-    Set task = mTask.ObjectFromPtr(param)
+    Set task = mThread.ObjectFromPtr(param)
     
     Do
         If task.CancelRequested Then
@@ -241,7 +241,7 @@ task.SetTimeout 5000  ' 5秒超时
 ' 超时回调
 Public Function OnTimeout(ByVal taskPtr As LongPtr) As Long
     Dim task As cThread
-    Set task = mTask.ObjectFromPtr(taskPtr)
+    Set task = mThread.ObjectFromPtr(taskPtr)
     
     ' 执行超时清理
     CleanupResources
