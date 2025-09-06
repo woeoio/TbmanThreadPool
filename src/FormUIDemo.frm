@@ -28,13 +28,26 @@ Class FormUIDemo
         InitializeUI
         
         AddLogMessage "UI Notifier Demo initialized successfully"
+        AddLogMessage "Thread pool created with max 3 concurrent threads"
+        
+        ' 显示线程池初始状态
+        AddLogMessage "Initial pool state: " & vbCrLf & m_ThreadPool.GetPoolStats()
     End Sub
 
     ' 窗体卸载事件
     Private Sub Form_Unload(Cancel As Integer)
+        AddLogMessage "Form unloading - cleaning up resources..."
+        
+        ' 显示卸载前的线程池状态
+        If Not (m_ThreadPool Is Nothing) Then
+            AddLogMessage "Final cleanup - Active threads: " & m_ThreadPool.ActiveThreads
+        End If
+        
         ' 线程池会在对象销毁时自动终止所有线程并清理资源
         Set m_ThreadPool = Nothing
         Set m_UINotifier = Nothing
+        
+        AddLogMessage "Resources cleaned up successfully"
     End Sub
 
     ' 初始化UI控件
@@ -75,7 +88,8 @@ Class FormUIDemo
             percent = (CurrentValue * 100) \ MaxValue
         End If
         
-        LabelStatus.Caption = "Task " & GetTaskDisplayName(TaskId) & ": " & percent & "% - " & Message
+        LabelStatus.Caption = "Doing..."
+        ' LabelStatus.Caption = "Task " & GetTaskDisplayName(TaskId) & ": " & percent & "% - " & Message
         
         ' 记录到日志
         AddLogMessage "[PROGRESS] " & GetTaskDisplayName(TaskId) & ": " & CurrentValue & "/" & MaxValue & " - " & Message
@@ -94,6 +108,12 @@ Class FormUIDemo
         ' 更新UI状态
         UpdateTaskStatus TaskId, "Completed"
         
+        
+        ' 注释：线程池现在会自动清理已完成的任务，不需要手动调用 CleanupCompleted
+        ' If Not (m_ThreadPool Is Nothing) Then
+        '     m_ThreadPool.CleanupCompleted
+        ' End If
+        
         ' 检查是否所有任务都完成了
         CheckAllTasksCompleted
     End Sub
@@ -104,6 +124,22 @@ Class FormUIDemo
         
         ' 更新UI状态
         UpdateTaskStatus TaskId, "Error: " & ErrorMessage
+        
+        ' 更新对应的进度条和标签
+        On Error Resume Next
+        Dim i As Long = m_TaskidMapProcessBarIndex.Item(TaskId)
+        If Err.Number = 0 Then
+            Label1(i).Caption = "错误"
+        End If
+        On Error GoTo 0
+        
+        ' 注释：线程池现在会自动清理已完成的任务，不需要手动调用 CleanupCompleted
+        ' If Not (m_ThreadPool Is Nothing) Then
+        '     m_ThreadPool.CleanupCompleted
+        ' End If
+        
+        ' 检查是否所有任务都完成了
+        CheckAllTasksCompleted
         
         ' 可以选择显示错误对话框
         ' MsgBox "Task error: " & ErrorMessage, vbExclamation
@@ -137,7 +173,7 @@ Class FormUIDemo
 
     ' 开始任务按钮
     Private Sub ButtonStart_Click()
-        ' 清理之前的日志
+        ' 清理之前的日志（可选）
         ' ListBoxLog.Clear
         
         ' 重置任务计数器
@@ -145,11 +181,21 @@ Class FormUIDemo
         
         AddLogMessage "Starting demo tasks..."
         
+        ' 显示线程池初始状态
+        If Not (m_ThreadPool Is Nothing) Then
+            AddLogMessage "Pool status before starting tasks: " & vbCrLf & m_ThreadPool.GetPoolStats()
+        End If
+        
         ' 启动不同类型的任务
         m_TaskidMapProcessBarIndex.Clear()
         StartFileProcessTask
         StartDownloadTask
         StartDatabaseTask
+        
+        ' 显示任务启动后的线程池状态
+        If Not (m_ThreadPool Is Nothing) Then
+            AddLogMessage "Pool status after starting tasks - Active: " & m_ThreadPool.ActiveThreads & ", Total: " & m_ThreadPool.Count
+        End If
         
         ' 更新UI状态
         ButtonStart.Enabled = False
@@ -161,8 +207,19 @@ Class FormUIDemo
     ' 取消所有任务按钮
     Private Sub ButtonCancel_Click()
         If Not (m_ThreadPool Is Nothing) Then
+            AddLogMessage "Cancelling all tasks..."
+            
+            ' 显示取消前的状态
+            AddLogMessage "Before cancel - Active: " & m_ThreadPool.ActiveThreads & ", Total: " & m_ThreadPool.Count
+            
             m_ThreadPool.TerminateAll
             AddLogMessage "All tasks cancelled by user"
+            
+            ' 显示取消后的状态
+            AddLogMessage "After cancel - Active: " & m_ThreadPool.ActiveThreads & ", Total: " & m_ThreadPool.Count
+            
+            ' 清空任务映射集合
+            m_TaskidMapProcessBarIndex.Clear()
             
             ' 更新UI状态
             ButtonStart.Enabled = True
@@ -237,32 +294,19 @@ Class FormUIDemo
 
     ' 检查所有任务是否完成
     Private Sub CheckAllTasksCompleted()
-        ' 这里可以检查线程池状态，确定是否所有任务都完成了
-        ' 如果完成，可以重新启用开始按钮
-        
-        ' 简化实现：延迟检查
-        Timer1.Interval = 1000
-        Timer1.Enabled = True
-    End Sub
+        ' 使用线程池的内置完成检查
+        If m_ThreadPool.IsAllTasksCompleted Then
+            AddLogMessage "All tasks completed! (Timer confirmation)"
+                            
+            ' 重新启用开始按钮
+            ButtonStart.Enabled = True
+            ButtonCancel.Enabled = False
+            LabelStatus.Caption = "All tasks completed"
 
-    ' 定时器事件（可选）
-    Private Sub Timer1_Timer()
-        ' Timer1.Enabled = False
-        
-        ' 检查线程池状态
-        If Not (m_ThreadPool Is Nothing) Then
-            If m_ThreadPool.ActiveThreads = 0 Then
-                ' 所有任务完成
-                AddLogMessage "All tasks completed!"
-                
-                ' 重新启用开始按钮
-                ButtonStart.Enabled = True
-                ButtonCancel.Enabled = False
-                LabelStatus.Caption = "All tasks completed"
-                
-                Timer1.Enabled = False
-            End If
+            Exit Sub
         End If
     End Sub
+
+
 
 End Class

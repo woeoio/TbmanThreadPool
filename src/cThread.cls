@@ -67,6 +67,9 @@ Class cThread
     Private m_TaskResult As Collection   ' 任务结果集合
     Private m_UINotifier As cThreadUINotifier  ' UI通知器
     Private m_TaskId As String           ' 任务唯一标识符
+    Private m_WorkState As eThreadWorkState  ' 线程工作状态
+    Private m_LastStateCheck As Currency    ' 上次状态检查时间
+    Private m_StateCheckInterval As Long    ' 状态检查间隔（毫秒）
 
     ' 在类模块顶部添加（公共枚举）
     Public Enum eTaskWaitBehavior
@@ -98,6 +101,16 @@ Class cThread
         TaskResult_Cancelled = 2
         TaskResult_TimedOut = 3
     End Enum
+    
+    ' 线程工作状态枚举
+    Public Enum eThreadWorkState
+        ThreadWork_Idle = 0          ' 空闲状态 - 线程已启动但没有任务执行
+        ThreadWork_Busy = 1          ' 忙碌状态 - 线程正在执行任务
+        ThreadWork_Paused = 2        ' 暂停状态 - 线程暂停执行任务
+        ThreadWork_Stopped = 3       ' 停止状态 - 线程已停止
+        ThreadWork_Error = 4         ' 错误状态 - 线程执行出错
+        ThreadWork_Completed = 5     ' 完成状态 - 任务已完成，线程即将结束
+    End Enum
     ' ======================
     ' 初始化与清理
     ' ======================
@@ -115,6 +128,11 @@ Class cThread
         
         ' 生成唯一的任务ID
         m_TaskId = "Task_" & Format$(Now, "yyyymmddhhnnss") & "_" & ObjPtr(Me)
+        
+        ' 初始化工作状态为停止状态
+        m_WorkState = ThreadWork_Stopped
+        m_StateCheckInterval = 100  ' 每100毫秒检查一次状态
+        QueryPerformanceCounter m_LastStateCheck
     End Sub
 
     Private Sub Class_Terminate()
@@ -172,6 +190,9 @@ Class cThread
         m_Result = TaskResult_Success
         Set m_Dependencies = New Collection
         m_LogFile = ""
+        
+        ' 初始化为停止状态，准备启动
+        SetWorkState ThreadWork_Stopped
         UnlockState
     End Sub
 
@@ -206,11 +227,15 @@ Class cThread
             m_LastError = Err.LastDllError
             m_ErrorDescription = "Failed to create thread"
             WriteLog "Thread creation failed with error: " & m_LastError
+            SetWorkState ThreadWork_Error
             Start = False
             Exit Function
         End If
         
         m_IsRunning = True
+        ' 线程启动后，设置为空闲状态，将通过智能检测自动转为忙碌状态
+        SetWorkState ThreadWork_Idle
+        WriteLog "Thread started - initial state set to Idle"
         Start = True
     End Function
 
@@ -234,6 +259,7 @@ Class cThread
             Err.Raise vbObjectError + 1001, "cThread.Pause", "Thread suspension failed with error: " & m_LastError
         Else
             m_IsPaused = True
+            SetWorkState ThreadWork_Paused
         End If
     
         UnlockState
@@ -260,6 +286,7 @@ Class cThread
             Err.Raise vbObjectError + 1002, "cThread.Resume", "Thread resumption failed with error: " & m_LastError
         Else
             m_IsPaused = False
+            SetWorkState ThreadWork_Idle
         End If
     
         UnlockState
@@ -294,6 +321,7 @@ Class cThread
         Else
             m_IsRunning = False
             m_IsPaused = False
+            SetWorkState ThreadWork_Stopped
             CloseHandle m_ThreadHandle
             m_ThreadHandle = 0
         End If
@@ -341,6 +369,7 @@ Class cThread
                 ' 正常结束
                 m_IsRunning = False
                 m_IsPaused = False
+                SetWorkState ThreadWork_Completed
                 CloseHandle m_ThreadHandle
                 m_ThreadHandle = 0
             
@@ -375,6 +404,29 @@ Class cThread
         UnlockState
     End Property
 
+    '@Description "获取线程工作状态"
+    Public Property Get WorkState() As eThreadWorkState
+        LockState
+        WorkState = m_WorkState
+        UnlockState
+    End Property
+    
+    '@Description "检查线程是否正在工作（忙碌状态）"
+    Public Property Get IsBusy() As Boolean
+        CheckAndUpdateState  ' 自动检查状态
+        LockState
+        IsBusy = (m_WorkState = ThreadWork_Busy)
+        UnlockState
+    End Property
+    
+    '@Description "检查线程是否空闲可用"
+    Public Property Get IsIdle() As Boolean
+        CheckAndUpdateState  ' 自动检查状态
+        LockState
+        IsIdle = (m_WorkState = ThreadWork_Idle)
+        UnlockState
+    End Property
+
     '@Description "获取线程是否已暂停"
     Public Property Get IsPaused() As Boolean
         LockState
@@ -406,6 +458,67 @@ Class cThread
         ' ThreadHandle 在线程创建后不变，不需要锁
         ThreadHandle = m_ThreadHandle
     End Property
+    
+    '@Description "设置线程开始工作"
+    Public Sub SetBusy()
+        SetWorkState ThreadWork_Busy
+    End Sub
+    
+    '@Description "设置线程完成工作"
+    Public Sub SetCompleted()
+        SetWorkState ThreadWork_Completed
+    End Sub
+    
+    '@Description "设置线程错误状态"
+    Public Sub SetError()
+        SetWorkState ThreadWork_Error
+    End Sub
+    
+    '@Description "智能更新工作状态"
+    Public Sub UpdateWorkState()
+        ' 定期调用此方法来自动检测和更新工作状态
+        If Not m_IsRunning Then
+            If m_WorkState <> ThreadWork_Stopped And m_WorkState <> ThreadWork_Completed And m_WorkState <> ThreadWork_Error Then
+                SetWorkState ThreadWork_Stopped
+            End If
+            Exit Sub
+        End If
+        
+        ' 检查线程是否仍然活跃
+        If Not IsThreadAlive() Then
+            ' 线程已结束，设置为完成状态
+            SetWorkState ThreadWork_Completed
+            m_IsRunning = False
+            WriteLog "Thread detected as completed"
+            Exit Sub
+        End If
+        
+        ' 如果线程正在运行且当前状态不是忙碌或暂停，则认为它正在工作
+        If m_IsRunning And Not m_IsPaused Then
+            If m_WorkState = ThreadWork_Idle Or m_WorkState = ThreadWork_Stopped Then
+                SetWorkState ThreadWork_Busy
+                WriteLog "Thread auto-detected as working"
+            End If
+        End If
+    End Sub
+    
+    '@Description "检查并自动更新状态（如果需要）"
+    Private Sub CheckAndUpdateState()
+        ' 检查是否需要更新状态
+        Dim currentTime As Currency
+        QueryPerformanceCounter currentTime
+        
+        Dim freq As Currency
+        QueryPerformanceFrequency freq
+        
+        Dim elapsedMs As Long
+        elapsedMs = (currentTime - m_LastStateCheck) * 1000 / freq
+        
+        If elapsedMs >= m_StateCheckInterval Then
+            UpdateWorkState
+            m_LastStateCheck = currentTime
+        End If
+    End Sub
 
     '@Description "安全获取线程句柄"
     Public Property Get SafeThreadHandle() As LongPtr
@@ -482,6 +595,53 @@ Class cThread
             End If
         End If
     End Sub
+    
+    '@Description "设置线程工作状态（私有方法，已加锁）"
+    Private Sub SetWorkState(ByVal newState As eThreadWorkState)
+        Dim oldState As eThreadWorkState
+        oldState = m_WorkState
+        m_WorkState = newState
+        
+        ' 记录状态变化
+        WriteLog "Work state changed from " & GetWorkStateText(oldState) & " to " & GetWorkStateText(newState)
+        
+        ' 根据状态变化更新其他相关属性
+        Select Case newState
+            Case ThreadWork_Idle
+                ' 空闲状态时，确保不是暂停状态
+                m_IsPaused = False
+                
+            Case ThreadWork_Busy
+                ' 忙碌状态时，确保不是暂停状态
+                m_IsPaused = False
+                
+            Case ThreadWork_Paused
+                ' 暂停状态
+                m_IsPaused = True
+                
+            Case ThreadWork_Stopped, ThreadWork_Completed
+                ' 停止或完成状态时，线程不再运行
+                m_IsRunning = False
+                m_IsPaused = False
+                
+            Case ThreadWork_Error
+                ' 错误状态
+                m_IsPaused = False
+        End Select
+    End Sub
+    
+    '@Description "获取工作状态文本描述（私有方法）"
+    Private Function GetWorkStateText(ByVal state As eThreadWorkState) As String
+        Select Case state
+            Case ThreadWork_Idle: GetWorkStateText = "Idle"
+            Case ThreadWork_Busy: GetWorkStateText = "Busy"
+            Case ThreadWork_Paused: GetWorkStateText = "Paused"
+            Case ThreadWork_Stopped: GetWorkStateText = "Stopped"
+            Case ThreadWork_Error: GetWorkStateText = "Error"
+            Case ThreadWork_Completed: GetWorkStateText = "Completed"
+            Case Else: GetWorkStateText = "Unknown"
+        End Select
+    End Function
     
     '@Description "尝试执行受保护的操作"
     Private Function TryWithLock(ByVal Action As String, ByRef Result As Boolean) As Boolean
@@ -648,7 +808,7 @@ Class cThread
     End Sub
     
     '@Description "写入日志"
-    Private Sub WriteLog(ByVal Message As String)
+    Friend Sub WriteLog(ByVal Message As String)
         If m_LogFile = "" Then Exit Sub
         
         Dim fNum As Integer
@@ -907,6 +1067,11 @@ Class cThread
     Public Function GetTimeout() As Long
         ' 超时时间通常在设置后不变，不需要锁
         GetTimeout = m_TaskTimeout
+    End Function
+    
+    '@Description "获取任务过程地址（内部使用）"
+    Friend Function GetTaskProcedure() As LongPtr
+        GetTaskProcedure = m_TaskProcedure
     End Function
     
     '@Description "任务是否超时"

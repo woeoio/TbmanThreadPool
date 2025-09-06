@@ -37,6 +37,8 @@ Module mUINotifierExample
         Dim task As cThread
         Set task = mThread.ReturnFromPtr(param)
         
+        ' *** 注意：工作状态现在自动管理，无需手动调用 SetBusy ***
+        
         Dim fileCount As Long
         fileCount = 100  ' 假设要处理100个文件
         
@@ -63,13 +65,14 @@ Module mUINotifierExample
             ' 模拟偶发错误
             If i = 75 And Rnd() < 0.3 Then
                 task.NotifyError 1001, "Simulated processing error at file " & i
-                ' 继续处理其他文件
+                ' 继续处理其他文件，不设置错误状态
             End If
         Next
         
         ' 发送完成通知
         task.NotifyCompleted "Processed " & fileCount & " files successfully"
         
+        ' *** 注意：完成状态现在自动设置，无需手动调用 SetCompleted ***
         FileProcessTask = 0
     End Function
     
@@ -77,6 +80,8 @@ Module mUINotifierExample
     Public Function DownloadTask(ByVal param As LongPtr) As Long
         Dim task As cThread
         Set task = mThread.ReturnFromPtr(param)
+        
+        ' *** 注意：工作状态现在自动管理，无需手动调用 SetBusy ***
         
         Dim totalBytes As Long
         Dim downloadedBytes As Long
@@ -114,6 +119,8 @@ Module mUINotifierExample
         Loop
         
         task.NotifyCompleted "Download completed: " & totalBytes & " bytes"
+        
+        ' *** 注意：完成状态现在自动设置，无需手动调用 SetCompleted ***
         DownloadTask = 0
     End Function
     
@@ -121,6 +128,8 @@ Module mUINotifierExample
     Public Function DatabaseBatchTask(ByVal param As LongPtr) As Long
         Dim task As cThread
         Set task = mThread.ReturnFromPtr(param)
+        
+        ' *** 注意：工作状态现在自动管理，无需手动调用 SetBusy ***
         
         Dim recordCount As Long
         recordCount = 500
@@ -156,6 +165,8 @@ Module mUINotifierExample
         Sleep 100
         
         task.NotifyCompleted "Batch processing completed: " & recordCount & " records processed"
+        
+        ' *** 注意：完成状态现在自动设置，无需手动调用 SetCompleted ***
         DatabaseBatchTask = 0
     End Function
     

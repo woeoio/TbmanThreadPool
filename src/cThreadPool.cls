@@ -67,6 +67,9 @@ Class cThreadPool
                           Optional ByVal StartImmediately As Boolean = True, _
                           Optional ByVal Priority As eTaskPriority = Priority_Normal) As cThread
         
+        ' 首先进行自动清理
+        AutoCleanupCompleted
+        
         ' 创建新任务
         Dim newTask As New cThread
         newTask.Create TaskProcedure, Tag, False ' 先不启动
@@ -88,11 +91,14 @@ Class cThreadPool
         WriteLog "New task added with priority " & Priority
         
         If StartImmediately Then
+            ' 获取当前活动线程数（实时计算）
+            Dim currentActiveThreads As Long
+            currentActiveThreads = Me.ActiveThreads
+            
             ' 如果有空闲线程，直接启动
-            If m_MaxThreads = 0 Or m_ActiveThreads < m_MaxThreads Then
+            If m_MaxThreads = 0 Or currentActiveThreads < m_MaxThreads Then
                 newTask.Start
                 If newTask.IsRunning Then
-                    m_ActiveThreads = m_ActiveThreads + 1
                     WriteLog "Task started immediately"
                 End If
             Else
@@ -126,7 +132,7 @@ Class cThreadPool
                 If m_Tasks(i) Is task Then
                     If task.IsRunning Then
                         task.Terminate
-                        m_ActiveThreads = m_ActiveThreads - 1
+                        WriteLog "Task terminated and removed from pool"
                     End If
                     m_Tasks.Remove i
                     Exit For
@@ -136,10 +142,13 @@ Class cThreadPool
             Set task = m_Tasks(Index)
             If task.IsRunning Then
                 task.Terminate
-                m_ActiveThreads = m_ActiveThreads - 1
+                WriteLog "Task terminated and removed from pool"
             End If
             m_Tasks.Remove Index
         End If
+        
+        ' 处理待执行的任务（移除任务后可能有空闲线程）
+        ProcessPendingTasks
     End Sub
 
     '@Description "暂停所有运行中的任务"
@@ -177,12 +186,13 @@ Class cThreadPool
         If m_IsTerminating Then Exit Sub
         m_IsTerminating = True
         
+        WriteLog "Terminating all tasks..."
+        
         ' 终止所有运行中的任务
         Dim task As cThread
         For Each task In m_Tasks
             If task.IsRunning Then
                 task.Terminate
-                m_ActiveThreads = m_ActiveThreads - 1
             End If
         Next
         
@@ -190,7 +200,9 @@ Class cThreadPool
         Set m_Tasks = New Collection
         Set m_PendingTasks = New Collection
         m_State = PoolState_Stopped
+        m_ActiveThreads = 0  ' 重置计数器
         
+        WriteLog "All tasks terminated and pool stopped"
         m_IsTerminating = False
     End Sub
     
@@ -288,28 +300,28 @@ Class cThreadPool
     End Sub
     
     Private Sub UpdateActiveThreadCount()
-        Dim task As cThread
+        ' 由于ActiveThreads属性现在实时计算，这个方法主要用于日志记录
         Dim actualRunning As Long
-        actualRunning = 0
-        
-        For Each task In m_Tasks
-            If task.IsRunning Then
-                actualRunning = actualRunning + 1
-            End If
-        Next
-        
-        m_ActiveThreads = actualRunning
-        WriteLog "Updated active thread count to: " & m_ActiveThreads
+        actualRunning = Me.ActiveThreads  ' 调用实时计算的属性
+        WriteLog "Active thread count updated to: " & actualRunning
     End Sub
 
     '@Description "获取任务数量"
     Public Property Get Count() As Long
+        ' 在获取计数前进行自动清理
+        AutoCleanupCompleted
         Count = m_Tasks.Count
     End Property
 
     '@Description "获取活动线程数"
     Public Property Get ActiveThreads() As Long
-        ActiveThreads = m_ActiveThreads
+        ' 使用精确的运行任务计数方法
+        Dim count As Long
+        count = GetActualRunningTaskCount()
+        
+        ' 同时更新缓存的计数器
+        m_ActiveThreads = count
+        ActiveThreads = count
     End Property
 
     '@Description "获取最大线程数限制"
@@ -341,9 +353,25 @@ Class cThreadPool
         Loop
     End Sub
     
+    '@Description "自动清理已完成的任务（内部调用）"
+    Private Sub AutoCleanupCompleted()
+        ' 自动清理，但不会在每次调用时都执行
+        Static lastCleanupTime As Double
+        Dim currentTime As Double
+        currentTime = Timer
+        
+        ' 每秒最多清理一次，避免频繁操作
+        If currentTime - lastCleanupTime > 1 Then
+            CleanupCompleted
+            lastCleanupTime = currentTime
+            WriteLog "Auto cleanup completed, remaining tasks: " & m_Tasks.Count
+        End If
+    End Sub
+    
     '@Description "优雅关闭线程池"
     Public Sub Shutdown(Optional ByVal TimeoutMs As Long = 5000)
         m_State = PoolState_Stopping
+        WriteLog "Starting graceful shutdown..."
         
         ' 首先尝试取消所有任务
         RequestCancelAll
@@ -351,12 +379,18 @@ Class cThreadPool
         ' 等待指定时间
         WaitForAll TimeoutMs
         
+        ' 检查是否还有活动线程
+        Dim currentActiveThreads As Long
+        currentActiveThreads = Me.ActiveThreads
+        
         ' 如果还有任务在运行，强制终止
-        If m_ActiveThreads > 0 Then
+        If currentActiveThreads > 0 Then
+            WriteLog "Force terminating " & currentActiveThreads & " remaining tasks"
             TerminateAll
         End If
         
         m_State = PoolState_Stopped
+        WriteLog "Thread pool shutdown completed"
     End Sub
     
     '@Description "获取线程池状态"
@@ -378,6 +412,79 @@ Class cThreadPool
     Public Property Get AverageExecutionTime() As Double
         If m_CompletedTasks > 0 Then
             AverageExecutionTime = m_TotalExecutionTime / m_CompletedTasks
+        End If
+    End Property
+    
+    '@Description "获取运行中的任务数量（精确检查线程状态）"
+    Public Property Get RunningTasks() As Long
+        RunningTasks = GetActualRunningTaskCount()
+    End Property
+    
+    '@Description "精确计算运行中的任务数量（私有方法）"
+    Private Function GetActualRunningTaskCount() As Long
+        ' 先进行自动清理以移除已完成的任务
+        AutoCleanupCompleted
+        
+        Dim count As Long
+        Dim task As cThread
+        count = 0
+        
+        For Each task In m_Tasks
+            ' 触发智能状态更新
+            task.UpdateWorkState
+            
+            ' 检查任务是否真正在忙碌状态工作
+            If task.IsRunning And task.IsBusy Then
+                ' 可以添加额外的验证，比如检查线程句柄是否有效
+                Dim threadHandle As LongPtr
+                threadHandle = task.SafeThreadHandle
+                If threadHandle <> 0 Then
+                    count = count + 1
+                End If
+            End If
+        Next
+        
+        WriteLog "Actual working task count: " & count
+        GetActualRunningTaskCount = count
+    End Function
+    
+    '@Description "获取未完成的任务数量（运行中+等待中）"
+    Public Property Get PendingTasks() As Long
+        ' 使用精确的运行中任务数量
+        PendingTasks = Me.RunningTasks + m_PendingTasks.Count
+    End Property
+    
+    '@Description "获取等待执行的任务数量"
+    Public Property Get QueuedTasks() As Long
+        QueuedTasks = m_PendingTasks.Count
+    End Property
+    
+    '@Description "获取总任务数量（运行中+等待中+已在集合中但未清理的已完成任务）"
+    Public Property Get TotalTasks() As Long
+        ' 自动清理以获得准确计数
+        AutoCleanupCompleted
+        TotalTasks = m_Tasks.Count + m_PendingTasks.Count
+    End Property
+    
+    '@Description "检查是否所有任务都已完成"
+    Public Property Get IsAllTasksCompleted() As Boolean
+        ' 使用精确的运行中任务数量检查
+        IsAllTasksCompleted = (Me.RunningTasks = 0 And m_PendingTasks.Count = 0)
+    End Property
+    
+    '@Description "获取任务完成百分比"
+    Public Property Get CompletionPercentage() As Double
+        ' 使用精确的运行中任务数量
+        Dim currentPending As Long
+        currentPending = Me.PendingTasks
+        
+        Dim totalEverAdded As Long
+        totalEverAdded = m_CompletedTasks + currentPending
+        
+        If totalEverAdded > 0 Then
+            CompletionPercentage = (m_CompletedTasks * 100.0) / totalEverAdded
+        Else
+            CompletionPercentage = 100.0  ' 没有任务时视为100%完成
         End If
     End Property
     
@@ -429,20 +536,28 @@ Class cThreadPool
     Private Sub AdjustPoolSize()
         If Not m_AutoScale Then Exit Sub
         
+        ' 获取当前活动线程数（实时计算）
+        Dim currentActiveThreads As Long
+        currentActiveThreads = Me.ActiveThreads
+        
         ' 计算当前负载
         Dim currentLoad As Double
-        currentLoad = m_ActiveThreads / m_MaxThreads
+        If m_MaxThreads > 0 Then
+            currentLoad = currentActiveThreads / m_MaxThreads
+        Else
+            currentLoad = 0
+        End If
         
         ' 如果负载过高，增加线程数
         If currentLoad > m_LoadFactor Then
             Dim newMaxThreads As Long
             newMaxThreads = m_MaxThreads * 2
-            WriteLog "Expanding pool size from " & m_MaxThreads & " to " & newMaxThreads & " threads"
+            WriteLog "Expanding pool size from " & m_MaxThreads & " to " & newMaxThreads & " threads (load=" & Format$(currentLoad * 100, "0.0") & "%)"
             m_MaxThreads = newMaxThreads
         ' 如果负载过低，减少线程数（但不低于最小线程数）
         ElseIf currentLoad < (m_LoadFactor / 2) And m_MaxThreads > m_MinThreads Then
             newMaxThreads = Max(m_MinThreads, m_MaxThreads \ 2)
-            WriteLog "Shrinking pool size from " & m_MaxThreads & " to " & newMaxThreads & " threads"
+            WriteLog "Shrinking pool size from " & m_MaxThreads & " to " & newMaxThreads & " threads (load=" & Format$(currentLoad * 100, "0.0") & "%)"
             m_MaxThreads = newMaxThreads
         End If
     End Sub
@@ -469,8 +584,12 @@ Class cThreadPool
     Private Sub ProcessPendingTasks()
         If m_PendingTasks.Count = 0 Then Exit Sub
         
+        ' 获取当前活动线程数（实时计算）
+        Dim currentActiveThreads As Long
+        currentActiveThreads = Me.ActiveThreads
+        
         ' 检查是否可以执行更多任务
-        If m_MaxThreads > 0 And m_ActiveThreads >= m_MaxThreads Then Exit Sub
+        If m_MaxThreads > 0 And currentActiveThreads >= m_MaxThreads Then Exit Sub
         
         ' 获取下一个要执行的任务
         Dim nextTask As cThread
@@ -480,21 +599,46 @@ Class cThreadPool
         ' 启动任务
         nextTask.Start
         If nextTask.IsRunning Then
-            m_ActiveThreads = m_ActiveThreads + 1
+            WriteLog "Pending task started, TaskId: " & nextTask.TaskId
         End If
         
         ' 调整线程池大小
         AdjustPoolSize
+        
+        ' 递归处理更多待执行任务
+        ProcessPendingTasks
     End Sub
     
     '@Description "获取线程池统计信息"
     Public Function GetPoolStats() As String
+        ' 先进行自动清理以获得准确统计
+        AutoCleanupCompleted
+        
+        ' 获取详细统计
+        Dim runningTasks As Long
+        Dim queuedTasks As Long
+        Dim totalTasks As Long
+        Dim pendingTasks As Long
+        Dim isCompleted As Boolean
+        
+        runningTasks = Me.RunningTasks
+        queuedTasks = Me.QueuedTasks
+        totalTasks = Me.TotalTasks
+        pendingTasks = Me.PendingTasks
+        isCompleted = Me.IsAllTasksCompleted
+        
         Dim stats As String
         stats = "Thread Pool Statistics:" & vbCrLf & _
-               "Active Threads: " & m_ActiveThreads & "/" & m_MaxThreads & vbCrLf & _
-               "Pending Tasks: " & m_PendingTasks.Count & vbCrLf & _
-               "Completed Tasks: " & m_CompletedTasks & vbCrLf & _
+               "Running Tasks: " & runningTasks & "/" & m_MaxThreads & vbCrLf & _
+               "Queued Tasks: " & queuedTasks & vbCrLf & _
+               "Total Active Tasks: " & totalTasks & vbCrLf & _
+               "Pending Tasks: " & pendingTasks & vbCrLf & _
+               "Completed Tasks: " & Me.CompletedTasks & vbCrLf & _
+               "Tasks in Collection: " & m_Tasks.Count & vbCrLf & _
+               "Completion %: " & Format$(Me.CompletionPercentage, "0.0") & "%" & vbCrLf & _
+               "All Completed: " & IIf(isCompleted, "Yes", "No") & vbCrLf & _
                "Average Execution Time: " & Format$(AverageExecutionTime, "0.00") & "ms" & vbCrLf & _
+               "Pool State: " & IIf(m_State = PoolState_Running, "Running", IIf(m_State = PoolState_Stopping, "Stopping", "Stopped")) & vbCrLf & _
                "Auto-Scale: " & IIf(m_AutoScale, "Enabled", "Disabled")
         GetPoolStats = stats
     End Function
