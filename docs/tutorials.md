@@ -16,7 +16,7 @@ pool.Create 4
 
 ```vb
 ' 定义任务过程
-Public Function MyProc(ByVal param As Variant) As Long
+Public Function MyProc(ByVal param As LongPtr) As Long
     ' 执行一些操作
     Debug.Print "处理任务：" & param
     Sleep 1000  ' 模拟耗时操作
@@ -132,7 +132,7 @@ pool.SetAutoScale True, 2, 0.75  ' 启用自动扩展，最小2线程，负载�
 
 ```vb
 ' 任务过程中的错误处理
-Public Function MyProc(ByVal param As Variant) As Long
+Public Function MyProc(ByVal param As LongPtr) As Long
     On Error GoTo ErrorHandler
     
     ' 执行任务...
@@ -149,7 +149,7 @@ End Function
 
 ```vb
 ' 支持取消的任务过程
-Public Function CancellableProc(ByVal param As Variant) As Long
+Public Function CancellableProc(ByVal param As LongPtr) As Long
     Dim task As cThread
     Set task = mThread.ReturnFromPtr(param)
     

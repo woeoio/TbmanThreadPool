@@ -211,7 +211,7 @@ End If
 
 ```vb
 ' 支持取消的任务过程
-Public Function CancellableProc(ByVal param As Variant) As Long
+Public Function CancellableProc(ByVal param As LongPtr) As Long
     Dim task As cThread
     Set task = mThread.ReturnFromPtr(param)
     

@@ -52,7 +52,7 @@ pool.Create 4  ' 创建4个线程的池
 #### AddTask
 ```vb
 Public Function AddTask(ByVal proc As LongPtr, _
-                       Optional ByVal param As Variant, _
+                       Optional ByVal param As LongPtr, _
                        Optional ByVal priority As TaskPriority = Priority_Normal) As cThread
 ```
 - **说明**: 添加新任务到线程池
@@ -150,7 +150,7 @@ pool.SetAutoScale True, 2, 0.75
 #### Create
 ```vb
 Public Function Create(ByVal proc As LongPtr, _
-                      Optional ByVal param As Variant) As Boolean
+                      Optional ByVal param As LongPtr) As Boolean
 ```
 - **说明**: 创建新任务
 - **参数**:

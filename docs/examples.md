@@ -6,7 +6,7 @@
 
 ```vb
 ' 简单的任务过程
-Public Function SimpleTask(ByVal param As Variant) As Long
+Public Function SimpleTask(ByVal param As LongPtr) As Long
     Debug.Print "执行任务：" & param
     Sleep 1000  ' 模拟耗时操作
     SimpleTask = 0  ' 返回成功
@@ -116,7 +116,7 @@ Private Type DownloadInfo
 End Type
 
 ' 下载过程
-Public Function DownloadProc(ByVal param As Variant) As Long
+Public Function DownloadProc(ByVal param As LongPtr) As Long
     Dim info As DownloadInfo
     info = param
     
@@ -215,7 +215,7 @@ End Sub
 
 ```vb
 ' 压力测试任务
-Public Function StressTask(ByVal param As Variant) As Long
+Public Function StressTask(ByVal param As LongPtr) As Long
     ' 模拟不同负载的任务
     Dim duration As Long
     duration = Int(Rnd * 5000) + 1000  ' 1-6秒随机持续时间
