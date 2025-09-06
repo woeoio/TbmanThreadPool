@@ -1,5 +1,9 @@
 # TwinBasic 线程池类库
 
+## Document
+
+[https://doc.twinbasic.vb6.pro/en/tbman](https://doc.twinbasic.vb6.pro/en/tbman)
+
 ## 简介
 
 这是一个为 TwinBasic 开发的高性能线程池类库，提供了简单易用但功能强大的多线程编程支持。通过线程池，您可以轻松管理和重用线程资源，避免频繁创建和销毁线程带来的开销。
@@ -37,6 +41,7 @@
 
 ## 目录
 
+### 基础文档
 1. [类库参考](./api-reference.md)
    - 详细的类、方法、属性文档
    - 参数说明和返回值
@@ -47,20 +52,59 @@
    - 常见场景
    - 最佳实践
 
-3. [高级特性](./advanced-features.md)
-   - 任务优先级
-   - 错误处理
-   - 性能优化
-   - 自动扩展
-
-4. [示例代码](./examples.md)
+3. [示例代码](./examples.md)
    - 简单任务处理
    - HTTP下载示例
    - 批量任务处理
    - 任务依赖示例
 
+### 高级功能
+4. [高级特性](./advanced-features.md)
+   - 任务优先级管理
+   - 错误处理机制
+   - 性能优化策略
+   - 自动扩展功能
+
+5. [任务数据与结果管理](./TaskDataAndResult.md)
+   - TaskData 数据传递机制
+   - TaskResult 结果存储
+   - 类型安全的参数管理
+   - 线程安全的数据访问
+
+6. [性能优化指南](./PerformanceOptimization.md)
+   - 数据传递优化
+   - 内存管理策略
+   - 线程池配置优化
+   - 性能监控与调试
+
+7. [特性集成指南](./FeatureIntegration.md)
+   - 内置特性组合使用
+   - 超时与重试机制集成
+   - 任务取消与暂停功能
+   - 日志记录系统
+
+8. [高级应用示例](./AdvancedExamples.md)
+   - 批量文件处理
+   - 复杂业务场景
+   - 性能优化实例
+   - 错误处理最佳实践
+
+### 参考资料
+9. [故障排除指南](./Troubleshooting.md)
+   - 常见问题诊断
+   - 性能问题分析
+   - 错误代码参考
+   - 调试技巧
+
 ## 快速开始
 
+### 最简示例
+```vb
+' 一句话创建并执行任务
+New cTasks().Create(4).AddTask(AddressOf MyProc).WaitForCompletion
+```
+
+### 完整示例
 ```vb
 ' 创建线程池
 Dim pool As New cTasks

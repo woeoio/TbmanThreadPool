@@ -17,7 +17,7 @@ Class Form1
         Dim i As Long
         For i = 1 To 10
             Debug.Print i, t.ThreadHandle, t.Tag
-            If Task.CancelRequested Then Exit For
+            If t.CancelRequested Then Exit For
             ' 模拟工作
             ' Sleep 50
         Next
