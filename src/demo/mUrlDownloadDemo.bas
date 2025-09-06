@@ -1,7 +1,7 @@
 Module mUrlDownloadDemo
 
     ' WinHttp API 声明
-    Private Declare Function WinHttpOpen Lib "winhttp" Alias "WinHttpOpen" ( _
+    Private Declare PtrSafe Function WinHttpOpen Lib "winhttp" Alias "WinHttpOpen" ( _
         ByVal pwszUserAgent As LongPtr, _
         ByVal dwAccessType As Long, _
         ByVal pwszProxyName As LongPtr, _
@@ -9,14 +9,14 @@ Module mUrlDownloadDemo
         ByVal dwFlags As Long _
     ) As LongPtr
 
-    Private Declare Function WinHttpConnect Lib "winhttp" Alias "WinHttpConnect" ( _
+    Private Declare PtrSafe Function WinHttpConnect Lib "winhttp" Alias "WinHttpConnect" ( _
         ByVal hSession As LongPtr, _
         ByVal pwszServerName As LongPtr, _
         ByVal nServerPort As Long, _
         ByVal dwReserved As Long _
     ) As LongPtr
 
-    Private Declare Function WinHttpOpenRequest Lib "winhttp" Alias "WinHttpOpenRequest" ( _
+    Private Declare PtrSafe Function WinHttpOpenRequest Lib "winhttp" Alias "WinHttpOpenRequest" ( _
         ByVal hConnect As LongPtr, _
         ByVal pwszVerb As LongPtr, _
         ByVal pwszObjectName As LongPtr, _
@@ -26,7 +26,7 @@ Module mUrlDownloadDemo
         ByVal dwFlags As Long _
     ) As LongPtr
 
-    Private Declare Function WinHttpSendRequest Lib "winhttp" Alias "WinHttpSendRequest" ( _
+    Private Declare PtrSafe Function WinHttpSendRequest Lib "winhttp" Alias "WinHttpSendRequest" ( _
         ByVal hRequest As LongPtr, _
         ByVal lpszHeaders As LongPtr, _
         ByVal dwHeadersLength As Long, _
@@ -36,19 +36,19 @@ Module mUrlDownloadDemo
         ByVal dwContext As LongPtr _
     ) As Long
 
-    Private Declare Function WinHttpReceiveResponse Lib "winhttp" Alias "WinHttpReceiveResponse" ( _
+    Private Declare PtrSafe Function WinHttpReceiveResponse Lib "winhttp" Alias "WinHttpReceiveResponse" ( _
         ByVal hRequest As LongPtr, _
         ByVal lpReserved As LongPtr _
     ) As Long
 
-    Private Declare Function WinHttpReadData Lib "winhttp" Alias "WinHttpReadData" ( _
+    Private Declare PtrSafe Function WinHttpReadData Lib "winhttp" Alias "WinHttpReadData" ( _
         ByVal hRequest As LongPtr, _
         ByVal lpBuffer As LongPtr, _
         ByVal dwNumberOfBytesToRead As Long, _
         ByRef lpdwNumberOfBytesRead As Long _
     ) As Long
 
-    Private Declare Function WinHttpCloseHandle Lib "winhttp" Alias "WinHttpCloseHandle" ( _
+    Private Declare PtrSafe Function WinHttpCloseHandle Lib "winhttp" Alias "WinHttpCloseHandle" ( _
         ByVal hInternet As LongPtr _
     ) As Long
 

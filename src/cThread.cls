@@ -5,26 +5,26 @@ Class cThread
     '@Description "代表一个可管理的线程任务"
 
     ' API 声明
-    Private Declare Function CreateMutex Lib "kernel32" Alias "CreateMutexA" ( _
+    Private Declare PtrSafe Function CreateMutex Lib "kernel32" Alias "CreateMutexA" ( _
         ByVal lpMutexAttributes As LongPtr, _
         ByVal bInitialOwner As Long, _
         ByVal lpName As String _
     ) As LongPtr
 
-    Private Declare Function ReleaseMutex Lib "kernel32" ( _
+    Private Declare PtrSafe Function ReleaseMutex Lib "kernel32" ( _
         ByVal hMutex As LongPtr _
     ) As Long
 
-    Private Declare Function WaitForSingleObject Lib "kernel32" ( _
+    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" ( _
         ByVal hHandle As LongPtr, _
         ByVal dwMilliseconds As Long _
     ) As Long
 
-    Private Declare Function CloseHandle Lib "kernel32" ( _
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" ( _
         ByVal hObject As LongPtr _
     ) As Long
 
-    Private Declare Function GetExitCodeThread Lib "kernel32" ( _
+    Private Declare PtrSafe Function GetExitCodeThread Lib "kernel32" ( _
         ByVal hThread As LongPtr, _
         ByRef lpExitCode As Long _
     ) As Long
@@ -513,12 +513,12 @@ Class cThread
         End If
     End Property
 
-    Private Declare Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
-    Private Declare Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
+    Private Declare PtrSafe Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
+    Private Declare PtrSafe Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
     
     ' 日志记录相关API
-    Private Declare Function GetCurrentProcessId Lib "kernel32" () As Long
-    Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetCurrentThreadId Lib "kernel32" () As Long
     
     '@Description "设置任务优先级"
     Public Property Let Priority(ByVal Value As eTaskPriority)
@@ -805,7 +805,7 @@ Class cThread
         ExecuteTask = False
     End Function
     
-    Private Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" ( _
+    Private Declare PtrSafe Function CallWindowProc Lib "user32" Alias "CallWindowProcA" ( _
         ByVal lpPrevWndFunc As LongPtr, _
         ByVal hWnd As LongPtr, _
         ByVal Msg As Long, _

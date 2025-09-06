@@ -1,7 +1,7 @@
 Module mThread
 
     ' Windows API 声明
-    Public Declare Function CreateThread Lib "kernel32" ( _
+    Public Declare PtrSafe Function CreateThread Lib "kernel32" ( _
         ByVal lpThreadAttributes As LongPtr, _
         ByVal dwStackSize As LongPtr, _
         ByVal lpStartAddress As LongPtr, _
@@ -10,36 +10,36 @@ Module mThread
         ByRef lpThreadId As Long _
     ) As LongPtr
 
-    Public Declare Function SuspendThread Lib "kernel32" ( _
+    Public Declare PtrSafe Function SuspendThread Lib "kernel32" ( _
         ByVal hThread As LongPtr _
     ) As Long
 
-    Public Declare Function ResumeThread Lib "kernel32" ( _
+    Public Declare PtrSafe Function ResumeThread Lib "kernel32" ( _
         ByVal hThread As LongPtr _
     ) As Long
 
-    Public Declare Function TerminateThread Lib "kernel32" ( _
+    Public Declare PtrSafe Function TerminateThread Lib "kernel32" ( _
         ByVal hThread As LongPtr, _
         ByVal dwExitCode As Long _
     ) As Long
 
-    Public Declare Function WaitForSingleObject Lib "kernel32" ( _
+    Public Declare PtrSafe Function WaitForSingleObject Lib "kernel32" ( _
         ByVal hHandle As LongPtr, _
         ByVal dwMilliseconds As Long _
     ) As Long
 
-    Public Declare Function WaitForMultipleObjects Lib "kernel32" ( _
+    Public Declare PtrSafe Function WaitForMultipleObjects Lib "kernel32" ( _
         ByVal nCount As Long, _
         ByRef lpHandles As LongPtr, _
         ByVal bWaitAll As Long, _
         ByVal dwMilliseconds As Long _
     ) As Long
 
-    Public Declare Function CloseHandle Lib "kernel32" ( _
+    Public Declare PtrSafe Function CloseHandle Lib "kernel32" ( _
         ByVal hObject As LongPtr _
     ) As Long
 
-    Public Declare Sub Sleep Lib "kernel32" ( _
+    Public Declare PtrSafe Sub Sleep Lib "kernel32" ( _
         ByVal dwMilliseconds As Long _
     )
 
@@ -50,7 +50,7 @@ Module mThread
     Public Const WAIT_TIMEOUT As Long = 258
 
     ' 内存操作 API (用于 ReturnFromPtr)
-    Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
         ByRef Destination As Any, _
         ByRef Source As Any, _
         ByVal Length As LongPtr _

@@ -5,8 +5,8 @@ Class cThreadPool
     '@Description "线程池管理器"
     
     ' API 声明
-    Private Declare Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
-    Private Declare Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
+    Private Declare PtrSafe Function QueryPerformanceCounter Lib "kernel32" (ByRef lpPerformanceCount As Currency) As Long
+    Private Declare PtrSafe Function QueryPerformanceFrequency Lib "kernel32" (ByRef lpFrequency As Currency) As Long
     
     Private m_Tasks As Collection            ' 所有任务的集合
     Private m_PendingTasks As Collection     ' 待执行的任务队列
