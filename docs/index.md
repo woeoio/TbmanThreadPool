@@ -52,45 +52,51 @@
    - 常见场景
    - 最佳实践
 
-3. [示例代码](./examples.md)
+3. [详细用例解析](./DetailedExample.md)
+   - 基于 Form1.frm 的完整用例分析
+   - 性能优化最佳实践
+   - 代码实现详解
+   - 实际应用场景
+
+4. [示例代码](./examples.md)
    - 简单任务处理
    - HTTP下载示例
    - 批量任务处理
    - 任务依赖示例
 
 ### 高级功能
-4. [高级特性](./advanced-features.md)
+1. [高级特性](./advanced-features.md)
    - 任务优先级管理
    - 错误处理机制
    - 性能优化策略
    - 自动扩展功能
 
-5. [任务数据与结果管理](./TaskDataAndResult.md)
+2. [任务数据与结果管理](./TaskDataAndResult.md)
    - TaskData 数据传递机制
    - TaskResult 结果存储
    - 类型安全的参数管理
    - 线程安全的数据访问
 
-6. [性能优化指南](./PerformanceOptimization.md)
+3. [性能优化指南](./PerformanceOptimization.md)
    - 数据传递优化
    - 内存管理策略
    - 线程池配置优化
    - 性能监控与调试
 
-7. [特性集成指南](./FeatureIntegration.md)
+4. [特性集成指南](./FeatureIntegration.md)
    - 内置特性组合使用
    - 超时与重试机制集成
    - 任务取消与暂停功能
    - 日志记录系统
 
-8. [高级应用示例](./AdvancedExamples.md)
+5. [高级应用示例](./AdvancedExamples.md)
    - 批量文件处理
    - 复杂业务场景
    - 性能优化实例
    - 错误处理最佳实践
 
 ### 参考资料
-9. [故障排除指南](./Troubleshooting.md)
+1. [故障排除指南](./Troubleshooting.md)
    - 常见问题诊断
    - 性能问题分析
    - 错误代码参考

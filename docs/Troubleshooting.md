@@ -179,10 +179,77 @@ End Function
 ```
 
 ### 性能优化建议
-1. 使用性能分析工具
-2. 优化数据结构使用
-3. 减少锁竞争
-4. 优化资源使用
+
+#### 1. 使用性能分析工具
+- 定期监控线程池性能指标
+- 分析任务执行时间分布
+- 识别性能瓶颈
+
+#### 2. 优化数据结构使用
+- 选择合适的数据结构
+- 避免频繁的内存分配
+
+#### 3. 减少锁竞争
+**重要优化：一次性获取线程信息**
+```vb
+' 在循环开始前一次性获取所有需要的信息，避免循环体内获取，减少锁竞争
+Function ThreadProc(ByVal param As LongPtr) As Long
+    Dim t As cThread
+    Set t = mThread.ReturnFromPtr(param)
+    
+    ' ✅ 正确做法：一次性获取所有属性
+    Dim threadHandle As LongPtr = t.ThreadHandle
+    Dim threadID As Long = t.ThreadID
+    Dim tag As Variant = t.Tag
+    
+    ' 执行工作循环（不再访问需要锁的属性）
+    Dim i As Long
+    For i = 1 To 1000
+        ' ❌ 错误做法：在循环内访问线程属性
+        ' Debug.Print i, t.ThreadHandle, t.ThreadID, t.Tag
+        
+        ' ✅ 正确做法：使用预先获取的变量
+        Debug.Print i, threadHandle, threadID, tag
+        
+        ' 对于大循环，减少取消检查频率以提高性能
+        If (i Mod 10) = 0 Then  ' 每10次循环检查一次
+            If t.CancelRequested Then Exit For
+        End If
+        
+        ' 实际工作代码...
+    Next
+    ThreadProc = 0
+End Function
+```
+
+**关键要点：**
+- **避免频繁属性访问**：在循环体内重复访问 `ThreadHandle`、`ThreadID` 等属性会增加锁竞争
+- **一次性获取**：在循环开始前获取所有需要的信息，存储在局部变量中
+- **减少取消检查频率**：对于大循环体，使用 `Mod` 操作符减少 `CancelRequested` 检查频率
+
+#### 4. 优化取消检查机制
+```vb
+' 对于不同循环大小采用不同的检查策略
+For i = 1 To loopCount
+    ' 小循环（< 100次）：每次都检查
+    If loopCount < 100 Then
+        If t.CancelRequested Then Exit For
+    ' 中等循环（100-1000次）：每2次检查一次
+    ElseIf loopCount < 1000 Then
+        If (i Mod 2) = 0 AndAlso t.CancelRequested Then Exit For
+    ' 大循环（> 1000次）：每10次检查一次
+    Else
+        If (i Mod 10) = 0 AndAlso t.CancelRequested Then Exit For
+    End If
+    
+    ' 工作代码...
+Next
+```
+
+#### 5. 优化资源使用
+- 合理设置线程池大小
+- 避免过度创建对象
+- 及时释放不需要的资源
 
 ## 3. 日志分析
 
@@ -285,6 +352,75 @@ End Sub
 ```
 
 ## 5. 最佳实践
+
+### 性能优化最佳实践
+
+#### 线程过程优化原则
+基于 `Form1.frm` 测试用例的优化经验：
+
+```vb
+' ✅ 推荐的线程过程模式
+Function OptimizedThreadProc(ByVal param As LongPtr) As Long
+    Dim t As cThread
+    Set t = mThread.ReturnFromPtr(param)
+    
+    ' 1. 一次性获取所有线程属性（避免循环内锁竞争）
+    Dim threadHandle As LongPtr = t.ThreadHandle
+    Dim threadID As Long = t.ThreadID
+    Dim tag As Variant = t.Tag
+    
+    ' 2. 使用局部变量进行计算
+    Dim totalItems As Long = GetWorkItemCount()
+    Dim checkInterval As Long = CalculateCheckInterval(totalItems)
+    
+    ' 3. 执行优化的工作循环
+    Dim i As Long
+    For i = 1 To totalItems
+        ' 使用预先获取的变量而不是重复访问属性
+        ProcessWorkItem i, threadHandle, threadID, tag
+        
+        ' 智能取消检查（避免每次都检查）
+        If (i Mod checkInterval) = 0 Then
+            If t.CancelRequested Then
+                LogTaskEvent t, LogLevel_Info, "任务被取消，已完成 " & i & "/" & totalItems
+                Exit For
+            End If
+        End If
+    Next
+    
+    OptimizedThreadProc = 0
+End Function
+
+' 计算合适的检查间隔
+Private Function CalculateCheckInterval(totalItems As Long) As Long
+    If totalItems < 50 Then
+        CalculateCheckInterval = 1      ' 小任务：每次检查
+    ElseIf totalItems < 500 Then
+        CalculateCheckInterval = 5      ' 中等任务：每5次检查
+    ElseIf totalItems < 5000 Then
+        CalculateCheckInterval = 20     ' 大任务：每20次检查
+    Else
+        CalculateCheckInterval = 100    ' 超大任务：每100次检查
+    End If
+End Function
+```
+
+**核心优化要点：**
+
+1. **避免锁竞争**
+   - 循环开始前一次性获取所有线程属性
+   - 使用局部变量缓存频繁访问的数据
+   - 减少对共享资源的访问频率
+
+2. **智能取消检查**
+   - 根据循环大小动态调整检查频率
+   - 使用 `Mod` 操作符实现周期性检查
+   - 平衡响应性和性能
+
+3. **内存管理**
+   - 预先分配需要的内存空间
+   - 避免在循环中创建临时对象
+   - 及时释放不再需要的资源
 
 ### 预防措施
 1. 实现健康检查
