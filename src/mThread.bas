@@ -1,5 +1,9 @@
 Module mThread
 
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
+
     ' Windows API 声明
     Public Declare PtrSafe Function CreateThread Lib "kernel32" ( _
         ByVal lpThreadAttributes As LongPtr, _

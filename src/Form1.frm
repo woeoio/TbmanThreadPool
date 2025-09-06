@@ -2,6 +2,11 @@
 [FormDesignerId("71B7D6D9-7FFB-4151-A8CD-3D6FAF10C90E")]
 [PredeclaredId]
 Class Form1
+
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
+
     ' 线程过程示例
     Function ThreadProc(ByVal param As LongPtr) As Long
         Dim t As cThread '从指针还原线程对象，可以使用对象成员

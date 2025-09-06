@@ -1,5 +1,9 @@
 Class cThread
 
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
+
     '@Module
     '@Folder("Threading")
     '@Description "代表一个可管理的线程任务"

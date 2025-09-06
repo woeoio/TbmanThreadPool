@@ -1,5 +1,9 @@
 Class cThreadPool
 
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
+
     '@Module
     '@Folder("Threading")
     '@Description "线程池管理器"

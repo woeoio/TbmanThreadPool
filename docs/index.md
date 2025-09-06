@@ -2,7 +2,7 @@
 
 ## Document
 
-[https://doc.twinbasic.vb6.pro/en/tbman](https://doc.twinbasic.vb6.pro/en/tbman)
+[https://doc.twinbasic.vb6.pro/en/tbman/threadPool/](https://doc.twinbasic.vb6.pro/en/tbman/threadPool/)
 
 ## 简介
 
