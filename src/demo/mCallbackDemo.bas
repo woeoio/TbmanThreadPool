@@ -17,7 +17,7 @@ Module mCallbackDemo
                                         ByVal wParam As LongPtr, _
                                         ByVal lParam As LongPtr) As Long
         ' 获取任务对象
-        Dim task As cTask
+        Dim task As cThread
         Set task = mTask.ObjectFromPtr(taskPtr)
         
         ' 获取任务相关数据
@@ -43,7 +43,7 @@ Module mCallbackDemo
                                     ByVal wParam As LongPtr, _
                                     ByVal lParam As LongPtr) As Long
         ' 获取任务对象
-        Dim task As cTask
+        Dim task As cThread
         Set task = mTask.ObjectFromPtr(taskPtr)
         
         ' 获取任务相关数据
@@ -60,7 +60,7 @@ Module mCallbackDemo
     
     ' 示例任务过程
     Public Function SampleTaskProc(ByVal param As LongPtr) As Long
-        Dim task As cTask
+        Dim task As cThread
         Set task = mTask.ObjectFromPtr(param)
         
         ' 模拟一些工作
@@ -89,7 +89,7 @@ Module mCallbackDemo
         Randomize Timer
         
         ' 创建线程池
-        Dim pool As New cTasks
+        Dim pool As New cThreadPool
         pool.Create 4
         
         ' 准备任务数据
@@ -98,7 +98,7 @@ Module mCallbackDemo
         taskData.Data = "示例数据"
         
         ' 创建任务
-        Dim task As cTask
+        Dim task As cThread
         Set task = pool.AddTask(AddressOf SampleTaskProc, taskData)
         
         ' 设置回调

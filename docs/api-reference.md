@@ -1,6 +1,6 @@
 # API 参考文档
 
-## cTasks 类
+## cThreadPool 类
 
 线程池主类，负责管理线程和任务队列。
 
@@ -45,7 +45,7 @@ Public Function Create(ByVal threadCount As Long) As Boolean
 - **返回值**: 创建成功返回 True
 - **示例**:
 ```vb
-Dim pool As New cTasks
+Dim pool As New cThreadPool
 pool.Create 4  ' 创建4个线程的池
 ```
 
@@ -53,7 +53,7 @@ pool.Create 4  ' 创建4个线程的池
 ```vb
 Public Function AddTask(ByVal proc As LongPtr, _
                        Optional ByVal param As Variant, _
-                       Optional ByVal priority As TaskPriority = Priority_Normal) As cTask
+                       Optional ByVal priority As TaskPriority = Priority_Normal) As cThread
 ```
 - **说明**: 添加新任务到线程池
 - **参数**:
@@ -63,7 +63,7 @@ Public Function AddTask(ByVal proc As LongPtr, _
 - **返回值**: 新创建的任务对象
 - **示例**:
 ```vb
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc, "参数", Priority_High)
 ```
 
@@ -116,7 +116,7 @@ Public Sub SetAutoScale(ByVal enabled As Boolean, _
 pool.SetAutoScale True, 2, 0.75
 ```
 
-## cTask 类
+## cThread 类
 
 单个任务的封装类，提供任务控制和状态管理。
 

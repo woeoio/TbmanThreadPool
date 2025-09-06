@@ -8,7 +8,7 @@
 
 ```vb
 ' 创建一个包含4个线程的池
-Dim pool As New cTasks
+Dim pool As New cThreadPool
 pool.Create 4
 ```
 
@@ -24,7 +24,7 @@ Public Function MyProc(ByVal param As Variant) As Long
 End Function
 
 ' 添加任务到线程池
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc, "任务1")
 
 ' 等待任务完成
@@ -39,7 +39,7 @@ Public Function TaskCompleted(ByVal taskPtr As LongPtr, _
                             ByVal result As Long, _
                             ByVal wParam As LongPtr, _
                             ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     Debug.Print "任务完成，结果：" & result
     TaskCompleted = 0
@@ -50,14 +50,14 @@ Public Function TaskError(ByVal taskPtr As LongPtr, _
                          ByVal errorCode As Long, _
                          ByVal wParam As LongPtr, _
                          ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     Debug.Print "任务错误：" & errorCode
     TaskError = 0
 End Function
 
 ' 设置回调
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc)
 task.SetOnComplete AddressOf TaskCompleted
 task.SetOnError AddressOf TaskError
@@ -69,11 +69,11 @@ task.SetOnError AddressOf TaskError
 
 ```vb
 ' 添加高优先级任务
-Dim highTask As cTask
+Dim highTask As cThread
 Set highTask = pool.AddTask(AddressOf MyProc, "高优先级", Priority_High)
 
 ' 添加普通优先级任务
-Dim normalTask As cTask
+Dim normalTask As cThread
 Set normalTask = pool.AddTask(AddressOf MyProc, "普通优先级", Priority_Normal)
 ```
 
@@ -81,7 +81,7 @@ Set normalTask = pool.AddTask(AddressOf MyProc, "普通优先级", Priority_Norm
 
 ```vb
 ' 设置任务超时
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc)
 task.SetTimeout 5000  ' 5秒超时
 
@@ -95,7 +95,7 @@ End If
 
 ```vb
 ' 设置重试策略
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc)
 task.SetRetryPolicy 3, 1000  ' 最多重试3次，间隔1秒
 ```
@@ -104,7 +104,7 @@ task.SetRetryPolicy 3, 1000  ' 最多重试3次，间隔1秒
 
 ```vb
 ' 添加多个任务
-Dim tasks() As cTask
+Dim tasks() As cThread
 ReDim tasks(1 To 10)
 
 ' 创建10个任务
@@ -121,7 +121,7 @@ pool.WaitForAll 10000  ' 最多等待10秒
 
 ```vb
 ' 创建可自动扩展的线程池
-Dim pool As New cTasks
+Dim pool As New cThreadPool
 pool.Create 4
 pool.SetAutoScale True, 2, 0.75  ' 启用自动扩展，最小2线程，负载因子0.75
 ```
@@ -150,7 +150,7 @@ End Function
 ```vb
 ' 支持取消的任务过程
 Public Function CancellableProc(ByVal param As Variant) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     Do

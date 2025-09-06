@@ -35,8 +35,8 @@
 
 ## 核心组件
 
-- `cTasks`: 线程池主类，负责管理线程和任务队列
-- `cTask`: 任务类，封装了单个异步任务的所有操作和状态
+- `cThreadPool`: 线程池主类，负责管理线程和任务队列
+- `cThread`: 任务类，封装了单个异步任务的所有操作和状态
 - `mTask`: 工具模块，提供通用函数和辅助方法
 
 ## 目录
@@ -101,17 +101,17 @@
 ### 最简示例
 ```vb
 ' 一句话创建并执行任务
-New cTasks().Create(4).AddTask(AddressOf MyProc).WaitForCompletion
+New cThreadPool().Create(4).AddTask(AddressOf MyProc).WaitForCompletion
 ```
 
 ### 完整示例
 ```vb
 ' 创建线程池
-Dim pool As New cTasks
+Dim pool As New cThreadPool
 pool.Create 4  ' 创建4个线程的线程池
 
 ' 添加任务
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc)
 
 ' 设置任务属性

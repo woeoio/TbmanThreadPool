@@ -15,11 +15,11 @@ End Function
 ' 使用示例
 Public Sub SimpleTaskDemo()
     ' 创建线程池
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4  ' 4个线程
     
     ' 添加任务
-    Dim task As cTask
+    Dim task As cThread
     Set task = pool.AddTask(AddressOf SimpleTask, "Hello")
     
     ' 等待完成
@@ -39,7 +39,7 @@ End Sub
 ```vb
 Public Sub BatchTaskDemo()
     ' 创建线程池
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4
     
     ' 创建多个任务
@@ -67,7 +67,7 @@ Public Function TaskCompleted(ByVal taskPtr As LongPtr, _
                             ByVal result As Long, _
                             ByVal wParam As LongPtr, _
                             ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     
     Debug.Print "任务完成：" & task.Tag
@@ -81,7 +81,7 @@ Public Function TaskError(ByVal taskPtr As LongPtr, _
                          ByVal errorCode As Long, _
                          ByVal wParam As LongPtr, _
                          ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     
     Debug.Print "任务错误：" & task.ErrorDescription
@@ -91,10 +91,10 @@ End Function
 
 ' 使用示例
 Public Sub CallbackDemo()
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4
     
-    Dim task As cTask
+    Dim task As cThread
     Set task = pool.AddTask(AddressOf SimpleTask, "带回调的任务")
     
     ' 设置回调
@@ -150,7 +150,7 @@ End Function
 
 ' 下载演示
 Public Sub DownloadDemo()
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4
     
     ' 准备下载信息
@@ -159,7 +159,7 @@ Public Sub DownloadDemo()
     info.OutputFile = "C:\download\file.txt"
     
     ' 创建下载任务
-    Dim task As cTask
+    Dim task As cThread
     Set task = pool.AddTask(AddressOf DownloadProc, info)
     
     ' 设置超时和重试
@@ -186,11 +186,11 @@ End Sub
 ```vb
 ' 依赖任务示例
 Public Sub DependencyDemo()
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4
     
     ' 创建任务链
-    Dim task1 As cTask, task2 As cTask, task3 As cTask
+    Dim task1 As cThread, task2 As cThread, task3 As cThread
     
     ' 第一个任务：准备数据
     Set task1 = pool.AddTask(AddressOf PrepareData)
@@ -225,7 +225,7 @@ End Function
 
 ' 自动扩展示例
 Public Sub AutoScaleDemo()
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4  ' 初始4个线程
     
     ' 配置自动扩展
@@ -258,14 +258,14 @@ End Sub
 ```vb
 ' 错误处理示例
 Public Sub ErrorHandlingDemo()
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4
     
     ' 设置全局错误处理
     pool.SetErrorHandler AddressOf GlobalErrorHandler
     
     ' 添加可能失败的任务
-    Dim task As cTask
+    Dim task As cThread
     Set task = pool.AddTask(AddressOf RiskyTask)
     
     ' 设置重试策略
@@ -287,7 +287,7 @@ Public Sub ErrorHandlingDemo()
 End Sub
 
 ' 全局错误处理
-Public Function GlobalErrorHandler(ByVal pool As cTasks, _
+Public Function GlobalErrorHandler(ByVal pool As cThreadPool, _
                                  ByVal errorCode As Long) As Long
     ' 记录错误
     Debug.Print "线程池错误：" & errorCode
@@ -299,7 +299,7 @@ Public Function CustomErrorHandler(ByVal taskPtr As LongPtr, _
                                  ByVal errorCode As Long, _
                                  ByVal wParam As LongPtr, _
                                  ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     
     Select Case errorCode
@@ -318,11 +318,11 @@ End Function
 ```vb
 ' UI更新示例
 Public Sub UiUpdateDemo()
-    Dim pool As New cTasks
+    Dim pool As New cThreadPool
     pool.Create 4
     
     ' 创建进度更新任务
-    Dim task As cTask
+    Dim task As cThread
     Set task = pool.AddTask(AddressOf LongProcess)
     
     ' 设置进度回调

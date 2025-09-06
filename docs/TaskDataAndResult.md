@@ -63,7 +63,7 @@ Public Function GetTaskResultKeys() As Collection
 
 ```vb
 ' 创建任务并设置输入参数
-Dim task As New cTask
+Dim task As New cThread
 With task
     .SetTaskData "url", "http://example.com"
     .SetTaskData "timeout", 5000
@@ -78,7 +78,7 @@ task.Create AddressOf DownloadTaskProc
 
 ```vb
 Public Function DownloadTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 获取输入参数
@@ -106,7 +106,7 @@ Public Function TaskCompletedCallback(ByVal taskPtr As LongPtr, _
                                     ByVal result As Long, _
                                     ByVal wParam As LongPtr, _
                                     ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     
     ' 获取结果

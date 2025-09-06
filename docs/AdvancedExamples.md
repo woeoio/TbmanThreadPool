@@ -5,7 +5,7 @@
 ### 图片处理任务
 ```vb
 Public Function ImageProcessTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 获取处理参数
@@ -32,7 +32,7 @@ End Function
 ### 数据导出任务
 ```vb
 ' 创建导出任务
-With New cTask
+With New cThread
     .SetTaskData "format", "CSV"
     .SetTaskData "query", "SELECT * FROM Sales WHERE Year = 2025"
     .SetTaskData "parameters", CreateObject("Scripting.Dictionary")
@@ -46,7 +46,7 @@ End With
 ### Web API 请求链
 ```vb
 Public Function ChainedAPITaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 第一个API调用
@@ -71,7 +71,7 @@ End Function
 ### 股票数据监控
 ```vb
 Public Function StockMonitorTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     Dim symbols As Variant
@@ -93,7 +93,7 @@ Public Function StockMonitorTaskProc(ByVal param As LongPtr) As Long
     StockMonitorTaskProc = 0
 End Function
 
-Private Sub CheckAlertConditions(task As cTask)
+Private Sub CheckAlertConditions(task As cThread)
     Dim alerts As Dictionary
     Set alerts = task.GetTaskData("alertConditions")
     
@@ -108,13 +108,13 @@ End Sub
 ```vb
 ' 主任务
 Public Function MasterTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 创建子任务列表
     Dim subTasks As New Collection
     For i = 1 To 5
-        Dim subTask As New cTask
+        Dim subTask As New cThread
         With subTask
             .SetTaskData "masterTask", task
             .SetTaskData "workerId", i
@@ -135,7 +135,7 @@ End Function
 
 ' 工作任务
 Public Function WorkerTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     Dim workerId As Long
@@ -153,7 +153,7 @@ End Function
 ### 长时间运行任务
 ```vb
 Public Function LongRunningTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     Dim totalSteps As Long

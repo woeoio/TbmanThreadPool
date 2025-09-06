@@ -1,4 +1,4 @@
-Class cTask
+Class cThread
 
     '@Module
     '@Folder("Threading")
@@ -139,7 +139,7 @@ Class cTask
     Public Function Create(ByVal TaskProcedure As LongPtr, _
                           Optional ByVal Tag As Variant, _
                           Optional ByVal StartImmediately As Boolean = True _
-                          ) As cTask
+                          ) As cThread
        Initialize TaskProcedure, Tag
         If StartImmediately Then
             Start
@@ -222,7 +222,7 @@ Class cTask
         If SuspendThread(m_ThreadHandle) = -1 Then
             m_LastError = Err.LastDllError
             m_ErrorDescription = "Failed to suspend thread"
-            Err.Raise vbObjectError + 1001, "cTask.Pause", "Thread suspension failed with error: " & m_LastError
+            Err.Raise vbObjectError + 1001, "cThread.Pause", "Thread suspension failed with error: " & m_LastError
         Else
             m_IsPaused = True
         End If
@@ -248,7 +248,7 @@ Class cTask
         If ResumeThread(m_ThreadHandle) = -1 Then
             m_LastError = Err.LastDllError
             m_ErrorDescription = "Failed to resume thread"
-            Err.Raise vbObjectError + 1002, "cTask.Resume", "Thread resumption failed with error: " & m_LastError
+            Err.Raise vbObjectError + 1002, "cThread.Resume", "Thread resumption failed with error: " & m_LastError
         Else
             m_IsPaused = False
         End If
@@ -281,7 +281,7 @@ Class cTask
         If TerminateThread(m_ThreadHandle, 1) = 0 Then
             m_LastError = Err.LastDllError
             m_ErrorDescription = "Failed to terminate thread"
-            Err.Raise vbObjectError + 1003, "cTask.Terminate", "Thread termination failed with error: " & m_LastError
+            Err.Raise vbObjectError + 1003, "cThread.Terminate", "Thread termination failed with error: " & m_LastError
         Else
             m_IsRunning = False
             m_IsPaused = False
@@ -350,7 +350,7 @@ Class cTask
                 m_LastError = Err.LastDllError
                 m_ErrorDescription = "Wait failed"
                 UnlockState
-                Err.Raise vbObjectError + 1004, "cTask.WaitForCompletion", "Wait failed with error: " & m_LastError
+                Err.Raise vbObjectError + 1004, "cThread.WaitForCompletion", "Wait failed with error: " & m_LastError
         End Select
         UnlockState
     End Sub
@@ -550,7 +550,7 @@ Class cTask
     End Sub
     
     '@Description "添加任务依赖"
-    Public Sub AddDependency(ByVal Task As cTask)
+    Public Sub AddDependency(ByVal Task As cThread)
         LockState
         m_Dependencies.Add Task
         UnlockState
@@ -558,7 +558,7 @@ Class cTask
     
     '@Description "检查所有依赖任务是否完成"
     Private Function AreDependenciesMet() As Boolean
-        Dim task As cTask
+        Dim task As cThread
         For Each task In m_Dependencies
             If task.IsRunning Then
                 AreDependenciesMet = False
@@ -629,7 +629,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.SetTaskData", "Failed to set task parameter: " & Err.Description
+        Err.Raise Err.Number, "cThread.SetTaskData", "Failed to set task parameter: " & Err.Description
     End Sub
     
     '@Description "获取任务输入参数"
@@ -646,7 +646,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.GetTaskData", "Failed to get task parameter: " & Err.Description
+        Err.Raise Err.Number, "cThread.GetTaskData", "Failed to get task parameter: " & Err.Description
     End Function
     
     '@Description "设置任务结果"
@@ -661,7 +661,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.SetTaskResult", "Failed to set task result: " & Err.Description
+        Err.Raise Err.Number, "cThread.SetTaskResult", "Failed to set task result: " & Err.Description
     End Sub
     
     '@Description "获取任务结果"
@@ -678,7 +678,7 @@ Class cTask
         
     ErrorHandler:
         UnlockState
-        Err.Raise Err.Number, "cTask.GetTaskResult", "Failed to get task result: " & Err.Description
+        Err.Raise Err.Number, "cThread.GetTaskResult", "Failed to get task result: " & Err.Description
     End Function
     
     '@Description "清除任务数据"
@@ -826,7 +826,7 @@ Class cTask
     Private Function TimeoutProc(ByVal param As LongPtr) As Long
         On Error GoTo ErrorHandler
         
-        Dim task As cTask
+        Dim task As cThread
         Set task = mTask.ObjectFromPtr(param)
         
         ' 使用公共接口获取超时时间

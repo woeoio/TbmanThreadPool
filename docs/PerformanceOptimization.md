@@ -25,7 +25,7 @@ task.SetTaskData "data", largeString  ' 值传递可能导致性能问题
 
 ```vb
 ' 使用后清理大型对象
-Public Sub CleanupTask(task As cTask)
+Public Sub CleanupTask(task As cThread)
     Dim obj As Object
     Set obj = task.GetTaskResult("largeObject")
     If Not obj Is Nothing Then
@@ -51,7 +51,7 @@ Public Function SplitTask(data As Variant, chunkSize As Long) As Collection
     Dim i As Long
     
     For i = 1 To Length(data) Step chunkSize
-        Dim task As New cTask
+        Dim task As New cThread
         With task
             .SetTaskData "startIndex", i
             .SetTaskData "endIndex", Min(i + chunkSize - 1, Length(data))
@@ -151,7 +151,7 @@ End Sub
 
 ```vb
 ' 性能监控包装器
-Private Function MeasurePerformance(task As cTask, operation As String) As Double
+Private Function MeasurePerformance(task As cThread, operation As String) As Double
     Dim startTime As Currency
     QueryPerformanceCounter startTime
     
@@ -177,7 +177,7 @@ End Function
 
 ```vb
 ' 诊断日志记录
-Private Sub LogDiagnostics(task As cTask, category As String, message As String)
+Private Sub LogDiagnostics(task As cThread, category As String, message As String)
     Dim logEntry As String
     logEntry = Format$(Now, "yyyy-mm-dd hh:nn:ss.000") & " | " & _
                category & " | " & _

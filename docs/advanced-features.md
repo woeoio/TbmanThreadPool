@@ -20,7 +20,7 @@ End Enum
 1. 创建任务时指定：
 ```vb
 ' 创建高优先级任务
-Dim task As cTask
+Dim task As cThread
 Set task = pool.AddTask(AddressOf MyProc, param, Priority_High)
 ```
 
@@ -68,7 +68,7 @@ Public Function OnError(ByVal taskPtr As LongPtr, _
                        ByVal errorCode As Long, _
                        ByVal wParam As LongPtr, _
                        ByVal lParam As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     
     ' 记录错误
@@ -149,7 +149,7 @@ End If
 
 ```vb
 ' 创建依赖任务
-Dim task1 As cTask, task2 As cTask
+Dim task1 As cThread, task2 As cThread
 Set task1 = pool.AddTask(AddressOf Proc1)
 Set task2 = pool.AddTask(AddressOf Proc2)
 
@@ -167,7 +167,7 @@ task2.AddDependency task1  ' task2 依赖于 task1
 
 ```vb
 ' 创建任务链
-Dim task1 As cTask, task2 As cTask, task3 As cTask
+Dim task1 As cThread, task2 As cThread, task3 As cThread
 Set task1 = pool.AddTask(AddressOf Step1)
 Set task2 = pool.AddTask(AddressOf Step2)
 Set task3 = pool.AddTask(AddressOf Step3)
@@ -212,7 +212,7 @@ End If
 ```vb
 ' 支持取消的任务过程
 Public Function CancellableProc(ByVal param As Variant) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     Do
@@ -240,7 +240,7 @@ task.SetTimeout 5000  ' 5秒超时
 
 ' 超时回调
 Public Function OnTimeout(ByVal taskPtr As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(taskPtr)
     
     ' 执行超时清理

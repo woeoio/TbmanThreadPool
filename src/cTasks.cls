@@ -1,4 +1,4 @@
-Class cTasks
+Class cThreadPool
 
     '@Module
     '@Folder("Threading")
@@ -35,7 +35,7 @@ Class cTasks
     End Enum
     
     '@Description "创建新线程池"
-    Public Function Create(Optional ByVal MaxThreads As Long = 0) As cTasks
+    Public Function Create(Optional ByVal MaxThreads As Long = 0) As cThreadPool
         If MaxThreads < 1 Then MaxThreads = 1
         Initialize MaxThreads
         Set Create = Me
@@ -60,10 +60,10 @@ Class cTasks
     Public Function AddTask(ByVal TaskProcedure As LongPtr, _
                           Optional ByVal Tag As Variant, _
                           Optional ByVal StartImmediately As Boolean = True, _
-                          Optional ByVal Priority As eTaskPriority = Priority_Normal) As cTask
+                          Optional ByVal Priority As eTaskPriority = Priority_Normal) As cThread
         
         ' 创建新任务
-        Dim newTask As New cTask
+        Dim newTask As New cThread
         newTask.Create TaskProcedure, Tag, False ' 先不启动
         newTask.Priority = Priority
         
@@ -107,7 +107,7 @@ Class cTasks
 
     '@Description "移除并终止任务"
     Public Sub RemoveTask(ByVal Index As Variant)
-        Dim task As cTask
+        Dim task As cThread
     
         ' 支持按索引或对象引用移除
         If VarType(Index) = vbObject Then
@@ -134,7 +134,7 @@ Class cTasks
 
     '@Description "暂停所有运行中的任务"
     Public Sub PauseAll()
-        Dim task As cTask
+        Dim task As cThread
         For Each task In m_Tasks
             If task.IsRunning And Not task.IsPaused Then
                 task.Pause
@@ -144,7 +144,7 @@ Class cTasks
 
     '@Description "恢复所有暂停的任务"
     Public Sub ResumeAll()
-        Dim task As cTask
+        Dim task As cThread
         For Each task In m_Tasks
             If task.IsRunning And task.IsPaused Then
                 task.Resume
@@ -154,7 +154,7 @@ Class cTasks
 
     '@Description "请求取消所有任务"
     Public Sub RequestCancelAll()
-        Dim task As cTask
+        Dim task As cThread
         For Each task In m_Tasks
             If task.IsRunning Then
                 task.RequestCancel
@@ -168,7 +168,7 @@ Class cTasks
         m_IsTerminating = True
         
         ' 终止所有运行中的任务
-        Dim task As cTask
+        Dim task As cThread
         For Each task In m_Tasks
             If task.IsRunning Then
                 task.Terminate
@@ -192,7 +192,7 @@ Class cTasks
     Public Sub WaitForAll(Optional ByVal TimeoutMs As Long = INFINITE)
         Dim handles() As LongPtr
         Dim count As Long
-        Dim task As cTask
+        Dim task As cThread
         Dim startTime As Currency
         
         QueryPerformanceCounter startTime
@@ -236,7 +236,7 @@ Class cTasks
                     CheckStillRunningTasks
                 Case WAIT_FAILED
                     WriteLog "WaitForMultipleObjects failed with error: " & Err.LastDllError
-                    Err.Raise vbObjectError + 2001, "cTasks.WaitForAll", "WaitForMultipleObjects failed with error: " & Err.LastDllError
+                    Err.Raise vbObjectError + 2001, "cThreadPool.WaitForAll", "WaitForMultipleObjects failed with error: " & Err.LastDllError
             End Select
         
             ' 更新活动线程计数
@@ -247,7 +247,7 @@ Class cTasks
     End Sub
     
     Private Sub CheckStillRunningTasks()
-        Dim task As cTask
+        Dim task As cThread
         Dim runningCount As Long
         runningCount = 0
         
@@ -262,7 +262,7 @@ Class cTasks
     End Sub
     
     Private Sub UpdateActiveThreadCount()
-        Dim task As cTask
+        Dim task As cThread
         Dim actualRunning As Long
         actualRunning = 0
         
@@ -297,7 +297,7 @@ Class cTasks
     End Property
 
     '@Description "按索引获取任务"
-    Public Property Get Task(ByVal Index As Long) As cTask
+    Public Property Get Task(ByVal Index As Long) As cThread
         Set Task = m_Tasks(Index)
     End Property
 
@@ -355,7 +355,7 @@ Class cTasks
         End If
     End Property
     
-    Private Sub UpdateTaskStats(ByVal task As cTask)
+    Private Sub UpdateTaskStats(ByVal task As cThread)
         m_CompletedTasks = m_CompletedTasks + 1
         m_TotalExecutionTime = m_TotalExecutionTime + task.ExecutionTime
     End Sub
@@ -372,7 +372,7 @@ Class cTasks
         WriteLog "Thread pool logging enabled"
         
         ' 为所有任务启用日志
-        Dim task As cTask
+        Dim task As cThread
         For Each task In m_Tasks
             task.EnableLogging LogFilePath
         Next
@@ -422,9 +422,9 @@ Class cTasks
     End Sub
     
     '@Description "按优先级添加任务"
-    Private Sub AddToPendingQueue(ByVal Task As cTask)
+    Private Sub AddToPendingQueue(ByVal Task As cThread)
         Dim i As Long
-        Dim currentTask As cTask
+        Dim currentTask As cThread
         
         ' 按优先级插入队列
         For i = 1 To m_PendingTasks.Count
@@ -447,7 +447,7 @@ Class cTasks
         If m_MaxThreads > 0 And m_ActiveThreads >= m_MaxThreads Then Exit Sub
         
         ' 获取下一个要执行的任务
-        Dim nextTask As cTask
+        Dim nextTask As cThread
         Set nextTask = m_PendingTasks(1)
         m_PendingTasks.Remove 1
         

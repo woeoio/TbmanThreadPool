@@ -4,7 +4,7 @@
 Class Form1
     ' 线程过程示例
     Function ThreadProc(ByVal param As LongPtr) As Long
-        Dim t As cTask
+        Dim t As cThread
         Set t = mTask.ObjectFromPtr(param)
         
         ' 一次性获取所有需要的信息，减少锁竞争
@@ -35,8 +35,8 @@ Class Form1
         ThreadProc = 0
     End Function
     Private Sub Command1_Click()
-        Dim pool As New cTasks
-        Dim Task As New cTask
+        Dim pool As New cThreadPool
+        Dim Task As New cThread
         Dim i As Long
         '单个线程示例
         ' Task.Create(AddressOf ThreadProc, "dw")

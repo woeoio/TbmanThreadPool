@@ -55,7 +55,7 @@ End Function
 3. 检查资源使用情况
 
 ```vb
-Public Sub DiagnoseHungTask(task As cTask)
+Public Sub DiagnoseHungTask(task As cThread)
     ' 收集诊断信息
     Debug.Print "任务状态诊断:"
     Debug.Print "运行时间: " & task.ExecutionTime & "ms"
@@ -86,7 +86,7 @@ End Sub
 
 ```vb
 ' 内存使用跟踪
-Public Sub TrackMemoryUsage(task As cTask)
+Public Sub TrackMemoryUsage(task As cThread)
     Static lastCheck As Date
     Static memoryReadings As Collection
     
@@ -163,7 +163,7 @@ End Function
 ### 性能监控
 ```vb
 ' 性能监控包装器
-Public Function MonitorTaskPerformance(task As cTask) As Dictionary
+Public Function MonitorTaskPerformance(task As cThread) As Dictionary
     Dim metrics As New Dictionary
     
     ' 收集基本指标
@@ -196,7 +196,7 @@ Public Enum LogLevel
 End Enum
 
 ' 增强的日志记录
-Public Sub LogTaskEvent(task As cTask, level As LogLevel, message As String)
+Public Sub LogTaskEvent(task As cThread, level As LogLevel, message As String)
     If level <= GetCurrentLogLevel() Then
         Dim logEntry As String
         logEntry = BuildLogEntry(task, level, message)
@@ -213,7 +213,7 @@ End Sub
 ### 日志分析工具
 ```vb
 ' 日志分析器
-Public Function AnalyzeTaskLogs(task As cTask) As Dictionary
+Public Function AnalyzeTaskLogs(task As cThread) As Dictionary
     Dim analysis As New Dictionary
     
     ' 获取任务日志
@@ -238,7 +238,7 @@ End Function
 ### 调试辅助函数
 ```vb
 ' 任务状态快照
-Public Function CaptureTaskSnapshot(task As cTask) As Dictionary
+Public Function CaptureTaskSnapshot(task As cThread) As Dictionary
     Dim snapshot As New Dictionary
     
     ' 基本信息
@@ -264,7 +264,7 @@ Public Function CaptureTaskSnapshot(task As cTask) As Dictionary
 End Function
 
 ' 调试点
-Public Sub DebugCheckpoint(task As cTask, checkpoint As String)
+Public Sub DebugCheckpoint(task As cThread, checkpoint As String)
     Static checkpoints As Dictionary
     If checkpoints Is Nothing Then Set checkpoints = New Dictionary
     
@@ -294,7 +294,7 @@ End Sub
 
 ```vb
 ' 任务健康检查
-Public Function CheckTaskHealth(task As cTask) As Boolean
+Public Function CheckTaskHealth(task As cThread) As Boolean
     ' 验证基本状态
     If Not ValidateTaskState(task) Then
         LogTaskEvent task, LogLevel_Warning, "任务状态异常"
@@ -325,7 +325,7 @@ End Function
 
 ```vb
 ' 紧急处理
-Public Sub HandleEmergency(task As cTask, emergency As String)
+Public Sub HandleEmergency(task As cThread, emergency As String)
     ' 记录紧急情况
     LogTaskEvent task, LogLevel_Error, "紧急情况: " & emergency
     
@@ -344,7 +344,7 @@ End Sub
 
 ### 自动恢复策略
 ```vb
-Public Sub AttemptTaskRecovery(task As cTask)
+Public Sub AttemptTaskRecovery(task As cThread)
     ' 分析故障原因
     Dim failureReason As String
     failureReason = AnalyzeFailure(task)
@@ -366,7 +366,7 @@ End Sub
 ### 数据恢复
 ```vb
 ' 任务状态恢复
-Public Function RestoreTaskState(task As cTask) As Boolean
+Public Function RestoreTaskState(task As cThread) As Boolean
     ' 尝试从备份恢复
     If RestoreFromBackup(task) Then
         LogTaskEvent task, LogLevel_Info, "已从备份恢复"

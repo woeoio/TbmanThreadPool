@@ -17,7 +17,7 @@
 ### 扩展内置超时功能
 ```vb
 ' ThreadPool 已内置超时处理，这里展示如何扩展它
-With New cTask
+With New cThread
     ' 使用内置超时机制
     .SetTimeout 30000                        ' 设置总体超时（内置功能）
     
@@ -31,7 +31,7 @@ End With
 ### 超时处理与结果记录
 ```vb
 Public Function TimeoutAwareTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 获取超时配置
@@ -58,7 +58,7 @@ End Function
 
 ### 增强内置重试功能
 ```vb
-Public Sub ConfigureTaskWithRetry(task As cTask)
+Public Sub ConfigureTaskWithRetry(task As cThread)
     ' 使用内置重试机制
     task.SetRetryPolicy 3, 1000  ' 设置最大重试次数和延迟（内置功能）
     
@@ -72,7 +72,7 @@ Public Sub ConfigureTaskWithRetry(task As cTask)
 End Sub
 
 Public Function RetryAwareTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     Dim retryCount As Long
@@ -102,7 +102,7 @@ End Function
 
 ```vb
 Public Function ProgressAwareTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 初始化进度信息
@@ -133,7 +133,7 @@ Public Function ProgressAwareTaskProc(ByVal param As LongPtr) As Long
     ProgressAwareTaskProc = 0
 End Function
 
-Private Sub UpdateTaskProgress(task As cTask, currentStep As Long, totalSteps As Long)
+Private Sub UpdateTaskProgress(task As cThread, currentStep As Long, totalSteps As Long)
     Dim progress As Double
     progress = currentStep / totalSteps * 100
     
@@ -164,7 +164,7 @@ End Sub
 > ThreadPool 已内置了基础的日志功能（通过 `EnableLogging` 和 `WriteLog`），
 > 下面展示如何使用 TaskData/Result 构建更强大的日志和调试系统。
 ```vb
-Private Sub LogTaskEvent(task As cTask, eventType As String, message As String)
+Private Sub LogTaskEvent(task As cThread, eventType As String, message As String)
     ' 确保日志容器存在
     If task.GetTaskResult("eventLog") = Empty Then
         task.SetTaskResult "eventLog", CreateObject("Scripting.Dictionary")
@@ -196,7 +196,7 @@ End Sub
 
 ### 调试辅助功能
 ```vb
-Public Function GetTaskDebugInfo(task As cTask) As Dictionary
+Public Function GetTaskDebugInfo(task As cThread) As Dictionary
     Dim debug As New Dictionary
     
     ' 基本信息
@@ -229,7 +229,7 @@ End Function
 > 与 TaskData/Result 机制结合使用，构建功能完整的任务处理系统。
 ```vb
 Public Function ComplexTaskProc(ByVal param As LongPtr) As Long
-    Dim task As cTask
+    Dim task As cThread
     Set task = mTask.ObjectFromPtr(param)
     
     ' 初始化
@@ -266,7 +266,7 @@ Public Function ComplexTaskProc(ByVal param As LongPtr) As Long
     ComplexTaskProc = 1
 End Function
 
-Private Sub InitializeTaskTracking(task As cTask)
+Private Sub InitializeTaskTracking(task As cThread)
     ' 初始化所有跟踪状态
     With task
         .SetTaskResult "attempts", 0

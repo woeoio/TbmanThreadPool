@@ -58,7 +58,7 @@ Module mUrlDownloadDemo
     End Type
 
     Private Function DownloadProc(ByVal param As LongPtr) As Long
-        Dim task As cTask
+        Dim task As cThread
         Set task = mTask.ObjectFromPtr(param)
         
         ' 获取下载信息
@@ -223,7 +223,7 @@ Module mUrlDownloadDemo
         MkDir outputDir
         
         ' 创建线程池
-        Dim pool As New cTasks
+        Dim pool As New cThreadPool
         pool.Create 4  ' 使用4个线程
         pool.EnableLogging outputDir & "download_pool.log"
         
@@ -242,7 +242,7 @@ Module mUrlDownloadDemo
             info.OutputFile = outputDir & "data" & i & ".json"
             
             ' 创建任务并设置下载信息
-            Dim task As cTask
+            Dim task As cThread
             Set task = pool.AddTask(AddressOf DownloadProc, info)
             
             ' 设置超时和重试策略
