@@ -1,0 +1,19 @@
+2025-09-06 15:30:04 [PID:17220|TID:31396] Task logging enabled
+2025-09-06 15:30:04 [PID:17220|TID:31396] Task logging enabled
+2025-09-06 15:30:04 [PID:17220|TID:31396] Task logging enabled
+2025-09-06 15:30:04 [PID:17220|TID:31396] Task logging enabled
+2025-09-06 15:30:04 [PID:17220|TID:31396] Task logging enabled
+2025-09-06 15:30:04 [PID:17220|TID:31396] Lock acquisition failed with error: 6
+2025-09-06 15:30:20 [PID:17220|TID:31396] Task logging enabled
+2025-09-06 15:47:19 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:19 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:19 [PID:16884|TID:16552] Lock acquisition failed with error: 6
+2025-09-06 15:47:19 [PID:16884|TID:16552] Lock acquisition failed with error: 6
+2025-09-06 15:47:22 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:22 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:22 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:22 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:22 [PID:16884|TID:16552] Task logging enabled
+2025-09-06 15:47:27 [PID:16884|TID:14400] Lock acquisition timed out after 5000ms
+2025-09-06 15:47:27 [PID:16884|TID:31396] Lock acquisition timed out after 5000ms
+2025-09-06 16:17:13 [PID:21680|TID:28020] Task logging enabled
