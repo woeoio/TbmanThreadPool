@@ -1,0 +1,250 @@
+[Description("")]
+[FormDesignerId("UI-NOTIFIER-DEMO-FORM")]
+[PredeclaredId]
+Class FormUIDemo
+
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Description "UI通知器演示窗体"
+
+    ' UI通知器 - 使用WithEvents来接收事件
+    Private WithEvents m_UINotifier As cThreadUINotifier
+    Private m_ThreadPool As cThreadPool
+    Private m_TaskCounter As Long
+
+    ' 窗体加载事件
+    Private Sub Form_Load()
+        ' 创建UI通知器（自动初始化）
+        Set m_UINotifier = New cThreadUINotifier
+        
+        ' 创建线程池
+        Set m_ThreadPool = New cThreadPool
+        m_ThreadPool.Create 3  ' 最多3个并发线程
+        m_ThreadPool.SetUINotifier m_UINotifier
+        
+        ' 初始化UI
+        InitializeUI
+        
+        AddLogMessage "UI Notifier Demo initialized successfully"
+    End Sub
+
+    ' 窗体卸载事件
+    Private Sub Form_Unload(Cancel As Integer)
+        ' 线程池会在对象销毁时自动终止所有线程并清理资源
+        Set m_ThreadPool = Nothing
+        Set m_UINotifier = Nothing
+    End Sub
+
+    ' 初始化UI控件
+    Private Sub InitializeUI()
+        ' 这里应该设置各种UI控件的初始状态
+        ' 例如：进度条、列表框、按钮等
+        
+        ' 示例（需要根据实际的控件名称调整）:
+        ' ProgressBar1.Min = 0
+        ' ProgressBar1.Max = 100
+        ' ProgressBar1.Value = 0
+        ' ListBoxLog.Clear
+        ' ButtonStart.Caption = "Start Tasks"
+        ' ButtonCancel.Caption = "Cancel All"
+        ' ButtonCancel.Enabled = False
+    End Sub
+
+    ' =====================================================
+    ' UI通知器事件处理
+    ' =====================================================
+
+    ' 处理线程进度通知
+    Private Sub m_UINotifier_ThreadProgress(ByVal TaskId As String, ByVal CurrentValue As Long, ByVal MaxValue As Long, ByVal Message As String)
+        ' 更新进度条
+        ' ProgressBar1.Max = MaxValue
+        ' ProgressBar1.Value = CurrentValue
+        
+        ' 更新状态标签
+        Dim percent As Long
+        If MaxValue > 0 Then
+            percent = (CurrentValue * 100) \ MaxValue
+        End If
+        
+        ' LabelStatus.Caption = "Task " & GetTaskDisplayName(TaskId) & ": " & percent & "% - " & Message
+        
+        ' 记录到日志
+        AddLogMessage "[PROGRESS] " & GetTaskDisplayName(TaskId) & ": " & CurrentValue & "/" & MaxValue & " - " & Message
+        
+        ' 强制刷新UI
+        DoEvents
+    End Sub
+
+    ' 处理线程完成通知
+    Private Sub m_UINotifier_ThreadCompleted(ByVal TaskId As String, ByVal Result As Variant)
+        AddLogMessage "[COMPLETED] " & GetTaskDisplayName(TaskId) & " finished with result: " & CStr(Result)
+        
+        ' 更新UI状态
+        UpdateTaskStatus TaskId, "Completed"
+        
+        ' 检查是否所有任务都完成了
+        CheckAllTasksCompleted
+    End Sub
+
+    ' 处理线程错误通知
+    Private Sub m_UINotifier_ThreadError(ByVal TaskId As String, ByVal ErrorCode As Long, ByVal ErrorMessage As String)
+        AddLogMessage "[ERROR] " & GetTaskDisplayName(TaskId) & " error " & ErrorCode & ": " & ErrorMessage
+        
+        ' 更新UI状态
+        UpdateTaskStatus TaskId, "Error: " & ErrorMessage
+        
+        ' 可以选择显示错误对话框
+        ' MsgBox "Task error: " & ErrorMessage, vbExclamation
+    End Sub
+
+    ' 处理一般线程通知
+    Private Sub m_UINotifier_ThreadNotification(ByVal TaskId As String, ByVal NotificationCode As Long, ByVal Data As Variant)
+        Dim message As String
+        
+        Select Case NotificationCode
+            Case 2  ' Notify_Status
+                message = "[STATUS] " & GetTaskDisplayName(TaskId) & ": " & CStr(Data)
+                UpdateTaskStatus TaskId, CStr(Data)
+                
+            Case 3  ' Notify_Warning
+                message = "[WARNING] " & GetTaskDisplayName(TaskId) & ": " & CStr(Data)
+                
+            Case 101  ' 自定义通知（数据验证警告）
+                message = "[DATA] " & GetTaskDisplayName(TaskId) & ": " & CStr(Data)
+                
+            Case Else
+                message = "[NOTIFY " & NotificationCode & "] " & GetTaskDisplayName(TaskId) & ": " & CStr(Data)
+        End Select
+        
+        AddLogMessage message
+    End Sub
+
+    ' =====================================================
+    ' 按钮事件处理
+    ' =====================================================
+
+    ' 开始任务按钮
+    Private Sub ButtonStart_Click()
+        ' 清理之前的日志
+        ' ListBoxLog.Clear
+        
+        ' 重置任务计数器
+        m_TaskCounter = 0
+        
+        AddLogMessage "Starting demo tasks..."
+        
+        ' 启动不同类型的任务
+        StartFileProcessTask
+        StartDownloadTask
+        StartDatabaseTask
+        
+        ' 更新UI状态
+        ' ButtonStart.Enabled = False
+        ' ButtonCancel.Enabled = True
+        
+        AddLogMessage "All tasks started. Monitor progress below."
+    End Sub
+
+    ' 取消所有任务按钮
+    Private Sub ButtonCancel_Click()
+        If Not (m_ThreadPool Is Nothing) Then
+            m_ThreadPool.TerminateAll
+            AddLogMessage "All tasks cancelled by user"
+            
+            ' 更新UI状态
+            ' ButtonStart.Enabled = True
+            ' ButtonCancel.Enabled = False
+            ' ProgressBar1.Value = 0
+            ' LabelStatus.Caption = "Ready"
+        End If
+    End Sub
+
+    ' =====================================================
+    ' 任务启动方法
+    ' =====================================================
+
+    Private Sub StartFileProcessTask()
+        Dim task As cThread
+        Set task = m_ThreadPool.AddTask(AddressOf mUINotifierExample.FileProcessTask, "FileTask")
+        AddLogMessage "Started file processing task: " & task.TaskId
+    End Sub
+
+    Private Sub StartDownloadTask()
+        Dim task As cThread
+        Set task = m_ThreadPool.AddTask(AddressOf mUINotifierExample.DownloadTask, "DownloadTask")
+        AddLogMessage "Started download task: " & task.TaskId
+    End Sub
+
+    Private Sub StartDatabaseTask()
+        Dim task As cThread
+        Set task = m_ThreadPool.AddTask(AddressOf mUINotifierExample.DatabaseBatchTask, "DatabaseTask")
+        AddLogMessage "Started database task: " & task.TaskId
+    End Sub
+
+    ' =====================================================
+    ' 辅助方法
+    ' =====================================================
+
+    ' 添加日志消息
+    Private Sub AddLogMessage(ByVal message As String)
+        Dim timeStamp As String
+        timeStamp = Format$(Now, "hh:nn:ss")
+        
+        Dim logEntry As String
+        logEntry = timeStamp & " - " & message
+        
+        ' 添加到日志列表框
+        ' ListBoxLog.AddItem logEntry
+        ' ListBoxLog.TopIndex = ListBoxLog.ListCount - 1  ' 自动滚动到底部
+        
+        ' 同时输出到调试窗口
+        Debug.Print logEntry
+    End Sub
+
+    ' 获取任务显示名称
+    Private Function GetTaskDisplayName(ByVal TaskId As String) As String
+        ' 从TaskId中提取有意义的显示名称
+        If InStr(TaskId, "Task_") > 0 Then
+            ' 可以根据Tag或其他信息来确定任务类型
+            GetTaskDisplayName = "Task[" & Right$(TaskId, 6) & "]"
+        Else
+            GetTaskDisplayName = TaskId
+        End If
+    End Function
+
+    ' 更新任务状态
+    Private Sub UpdateTaskStatus(ByVal TaskId As String, ByVal status As String)
+        ' 这里可以更新任务状态显示
+        ' 例如在列表视图或树形控件中显示各个任务的状态
+        Debug.Print "Task " & GetTaskDisplayName(TaskId) & " status: " & status
+    End Sub
+
+    ' 检查所有任务是否完成
+    Private Sub CheckAllTasksCompleted()
+        ' 这里可以检查线程池状态，确定是否所有任务都完成了
+        ' 如果完成，可以重新启用开始按钮
+        
+        ' 简化实现：延迟检查
+        ' Timer1.Interval = 1000
+        ' Timer1.Enabled = True
+    End Sub
+
+    ' 定时器事件（可选）
+    Private Sub Timer1_Timer()
+        ' Timer1.Enabled = False
+        
+        ' 检查线程池状态
+        If Not (m_ThreadPool Is Nothing) Then
+            If m_ThreadPool.ActiveThreads = 0 Then
+                ' 所有任务完成
+                AddLogMessage "All tasks completed!"
+                
+                ' 重新启用开始按钮
+                ' ButtonStart.Enabled = True
+                ' ButtonCancel.Enabled = False
+                ' LabelStatus.Caption = "All tasks completed"
+            End If
+        End If
+    End Sub
+
+End Class

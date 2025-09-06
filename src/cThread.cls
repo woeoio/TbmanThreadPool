@@ -65,6 +65,8 @@ Class cThread
     Private m_LogFile As String          ' 日志文件路径
     Private m_TaskData As Collection     ' 任务输入参数集合
     Private m_TaskResult As Collection   ' 任务结果集合
+    Private m_UINotifier As cThreadUINotifier  ' UI通知器
+    Private m_TaskId As String           ' 任务唯一标识符
 
     ' 在类模块顶部添加（公共枚举）
     Public Enum eTaskWaitBehavior
@@ -110,6 +112,9 @@ Class cThread
         End If
         Set m_TaskData = New Collection
         Set m_TaskResult = New Collection
+        
+        ' 生成唯一的任务ID
+        m_TaskId = "Task_" & Format$(Now, "yyyymmddhhnnss") & "_" & ObjPtr(Me)
     End Sub
 
     Private Sub Class_Terminate()
@@ -585,6 +590,54 @@ Class cThread
         m_OnError = CallbackProc
         UnlockState
     End Sub
+    
+    '@Description "设置UI通知器"
+    Public Sub SetUINotifier(ByRef notifier As cThreadUINotifier)
+        LockState
+        Set m_UINotifier = notifier
+        UnlockState
+    End Sub
+    
+    '@Description "向UI线程发送通知"
+    Public Sub NotifyToUI(ByVal NotificationCode As Long, Optional ByVal Data As Variant)
+        ' 这个方法可以在任何线程中安全调用
+        If m_UINotifier Is Nothing Then Exit Sub
+        
+        m_UINotifier.PostNotification m_TaskId, NotificationCode, Data
+    End Sub
+    
+    '@Description "向UI线程发送进度通知"
+    Public Sub NotifyProgress(ByVal CurrentValue As Long, ByVal MaxValue As Long, Optional ByVal Message As String = "")
+        If m_UINotifier Is Nothing Then Exit Sub
+        
+        m_UINotifier.PostProgress m_TaskId, CurrentValue, MaxValue, Message
+    End Sub
+    
+    '@Description "向UI线程发送状态通知"
+    Public Sub NotifyStatus(ByVal Message As String)
+        If m_UINotifier Is Nothing Then Exit Sub
+        
+        m_UINotifier.PostNotification m_TaskId, 2, Message  ' 2 = Notify_Status
+    End Sub
+    
+    '@Description "向UI线程发送错误通知"
+    Public Sub NotifyError(ByVal ErrorCode As Long, ByVal ErrorMessage As String)
+        If m_UINotifier Is Nothing Then Exit Sub
+        
+        m_UINotifier.PostError m_TaskId, ErrorCode, ErrorMessage
+    End Sub
+    
+    '@Description "向UI线程发送完成通知"
+    Public Sub NotifyCompleted(Optional ByVal Result As Variant)
+        If m_UINotifier Is Nothing Then Exit Sub
+        
+        m_UINotifier.PostCompleted m_TaskId, Result
+    End Sub
+    
+    '@Description "获取任务ID"
+    Public Property Get TaskId() As String
+        TaskId = m_TaskId
+    End Property
     
     '@Description "启用日志记录"
     Public Sub EnableLogging(ByVal LogFilePath As String)

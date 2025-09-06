@@ -26,6 +26,7 @@ Class cThreadPool
     Private m_LogFile As String              ' 日志文件路径
     Private m_LoadFactor As Double           ' 负载因子
     Private m_AutoScale As Boolean           ' 是否启用自动扩展
+    Private m_UINotifier As cThreadUINotifier      ' UI通知器
     
     Public Enum ePoolState
         PoolState_Running = 0
@@ -74,6 +75,11 @@ Class cThreadPool
         ' 如果启用了日志，为新任务也启用日志
         If m_LogFile <> "" Then
             newTask.EnableLogging m_LogFile
+        End If
+        
+        ' 如果有UI通知器，为新任务设置
+        If Not (m_UINotifier Is Nothing) Then
+            newTask.SetUINotifier m_UINotifier
         End If
         
         ' 添加到任务集合
@@ -191,6 +197,22 @@ Class cThreadPool
     Private Sub Class_Terminate()
         TerminateAll
     End Sub
+
+    '@Description "设置UI通知器"
+    Public Sub SetUINotifier(ByRef notifier As cThreadUINotifier)
+        Set m_UINotifier = notifier
+        
+        ' 为所有现有任务设置UI通知器
+        Dim task As cThread
+        For Each task In m_Tasks
+            task.SetUINotifier notifier
+        Next
+    End Sub
+    
+    '@Description "获取UI通知器"
+    Public Property Get UINotifier() As cThreadUINotifier
+        Set UINotifier = m_UINotifier
+    End Property
 
     '@Description "等待所有任务完成"
     Public Sub WaitForAll(Optional ByVal TimeoutMs As Long = INFINITE)
