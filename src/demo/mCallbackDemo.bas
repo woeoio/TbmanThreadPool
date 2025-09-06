@@ -18,7 +18,7 @@ Module mCallbackDemo
                                         ByVal lParam As LongPtr) As Long
         ' 获取任务对象
         Dim task As cThread
-        Set task = mThread.ObjectFromPtr(taskPtr)
+        Set task = mThread.ReturnFromPtr(taskPtr)
         
         ' 获取任务相关数据
         Dim taskData As TaskData
@@ -44,7 +44,7 @@ Module mCallbackDemo
                                     ByVal lParam As LongPtr) As Long
         ' 获取任务对象
         Dim task As cThread
-        Set task = mThread.ObjectFromPtr(taskPtr)
+        Set task = mThread.ReturnFromPtr(taskPtr)
         
         ' 获取任务相关数据
         Dim taskData As TaskData
@@ -61,7 +61,7 @@ Module mCallbackDemo
     ' 示例任务过程
     Public Function SampleTaskProc(ByVal param As LongPtr) As Long
         Dim task As cThread
-        Set task = mThread.ObjectFromPtr(param)
+        Set task = mThread.ReturnFromPtr(param)
         
         ' 模拟一些工作
         Dim i As Long

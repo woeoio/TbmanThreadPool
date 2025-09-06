@@ -32,7 +32,7 @@ End With
 ```vb
 Public Function TimeoutAwareTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 获取超时配置
     Dim operationTimeout As Long
@@ -73,7 +73,7 @@ End Sub
 
 Public Function RetryAwareTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     Dim retryCount As Long
     retryCount = task.GetTaskResult("retryCount")
@@ -103,7 +103,7 @@ End Function
 ```vb
 Public Function ProgressAwareTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 初始化进度信息
     task.SetTaskResult "progress", 0
@@ -230,7 +230,7 @@ End Function
 ```vb
 Public Function ComplexTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 初始化
     InitializeTaskTracking task

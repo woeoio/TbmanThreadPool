@@ -79,7 +79,7 @@ task.Create AddressOf DownloadTaskProc
 ```vb
 Public Function DownloadTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 获取输入参数
     Dim url As String
@@ -107,7 +107,7 @@ Public Function TaskCompletedCallback(ByVal taskPtr As LongPtr, _
                                     ByVal wParam As LongPtr, _
                                     ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(taskPtr)
+    Set task = mThread.ReturnFromPtr(taskPtr)
     
     ' 获取结果
     Dim statusCode As Long

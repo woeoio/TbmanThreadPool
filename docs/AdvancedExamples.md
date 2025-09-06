@@ -6,7 +6,7 @@
 ```vb
 Public Function ImageProcessTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 获取处理参数
     Dim inputPath As String: inputPath = task.GetTaskData("inputPath")
@@ -47,7 +47,7 @@ End With
 ```vb
 Public Function ChainedAPITaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 第一个API调用
     task.SetTaskResult "step1Status", "running"
@@ -72,7 +72,7 @@ End Function
 ```vb
 Public Function StockMonitorTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     Dim symbols As Variant
     symbols = task.GetTaskData("symbols")  ' 股票代码数组
@@ -109,7 +109,7 @@ End Sub
 ' 主任务
 Public Function MasterTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     ' 创建子任务列表
     Dim subTasks As New Collection
@@ -136,7 +136,7 @@ End Function
 ' 工作任务
 Public Function WorkerTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     Dim workerId As Long
     workerId = task.GetTaskData("workerId")
@@ -154,7 +154,7 @@ End Function
 ```vb
 Public Function LongRunningTaskProc(ByVal param As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     Dim totalSteps As Long
     totalSteps = task.GetTaskData("totalSteps")

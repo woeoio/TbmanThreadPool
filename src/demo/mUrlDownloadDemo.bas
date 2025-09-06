@@ -59,7 +59,7 @@ Module mUrlDownloadDemo
 
     Private Function DownloadProc(ByVal param As LongPtr) As Long
         Dim task As cThread
-        Set task = mThread.ObjectFromPtr(param)
+        Set task = mThread.ReturnFromPtr(param)
         
         ' 获取下载信息
         Dim info As DownloadInfo

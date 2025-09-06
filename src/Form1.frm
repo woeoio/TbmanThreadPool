@@ -5,7 +5,7 @@ Class Form1
     ' 线程过程示例
     Function ThreadProc(ByVal param As LongPtr) As Long
         Dim t As cThread
-        Set t = mThread.ObjectFromPtr(param)
+        Set t = mThread.ReturnFromPtr(param)
         
         ' 一次性获取所有需要的信息，减少锁竞争
         Dim threadHandle As LongPtr

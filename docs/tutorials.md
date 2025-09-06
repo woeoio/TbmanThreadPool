@@ -40,7 +40,7 @@ Public Function TaskCompleted(ByVal taskPtr As LongPtr, _
                             ByVal wParam As LongPtr, _
                             ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(taskPtr)
+    Set task = mThread.ReturnFromPtr(taskPtr)
     Debug.Print "任务完成，结果：" & result
     TaskCompleted = 0
 End Function
@@ -51,7 +51,7 @@ Public Function TaskError(ByVal taskPtr As LongPtr, _
                          ByVal wParam As LongPtr, _
                          ByVal lParam As LongPtr) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(taskPtr)
+    Set task = mThread.ReturnFromPtr(taskPtr)
     Debug.Print "任务错误：" & errorCode
     TaskError = 0
 End Function
@@ -151,7 +151,7 @@ End Function
 ' 支持取消的任务过程
 Public Function CancellableProc(ByVal param As Variant) As Long
     Dim task As cThread
-    Set task = mThread.ObjectFromPtr(param)
+    Set task = mThread.ReturnFromPtr(param)
     
     Do
         ' 检查是否请求取消

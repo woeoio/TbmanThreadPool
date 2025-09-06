@@ -827,7 +827,7 @@ Class cThread
         On Error GoTo ErrorHandler
         
         Dim task As cThread
-        Set task = mThread.ObjectFromPtr(param)
+        Set task = mThread.ReturnFromPtr(param)
         
         ' 使用公共接口获取超时时间
         Dim timeoutValue As Long

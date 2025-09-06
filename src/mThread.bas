@@ -49,26 +49,33 @@ Module mThread
     Public Const WAIT_OBJECT_0 As Long = 0
     Public Const WAIT_TIMEOUT As Long = 258
 
-    ' 内存操作 API (用于 ObjectFromPtr)
+    ' 内存操作 API (用于 ReturnFromPtr)
     Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
         ByRef Destination As Any, _
         ByRef Source As Any, _
         ByVal Length As LongPtr _
     )
     
-    ' 辅助函数：从指针获取对象
-    Public Function ObjectFromPtr(ByVal ptr As LongPtr) As Object
+    ' ' 辅助函数：从指针获取对象
+    Public Function ReturnFromPtr(ByVal ptr As LongPtr) As Object
         Dim obj As Object
         ' 注意：这需要 TwinBasic 支持或适当的 COM 接口处理
         CopyMemory obj, ptr, LenB(ptr)
-        Set ObjectFromPtr = obj
+        Set ReturnFromPtr = obj
         Set obj = Nothing
-    End Function
+    End Function    
+    ' Public Function ObjectFromPtr(ByVal ptr As LongPtr) As Object
+    '     Dim obj As Object
+    '     ' 注意：这需要 TwinBasic 支持或适当的 COM 接口处理
+    '     CopyMemory obj, ptr, LenB(ptr)
+    '     Set ObjectFromPtr = obj
+    '     Set obj = Nothing
+    ' End Function
 
-    ' 辅助函数：获取对象指针
-    Public Function PtrFromObject(ByVal obj As Object) As LongPtr
-        PtrFromObject = ObjPtr(obj)
-    End Function
+    ' ' 辅助函数：获取对象指针，可直接使用 ObjPtr，无需此函数
+    ' Public Function PtrFromObject(ByVal obj As Object) As LongPtr
+    '     PtrFromObject = ObjPtr(obj)
+    ' End Function
 
 
 
