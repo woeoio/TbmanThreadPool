@@ -11,6 +11,8 @@ Class FormUIDemo
     Private WithEvents m_UINotifier As cThreadUINotifier
     Private m_ThreadPool As cThreadPool
     Private m_TaskCounter As Long
+    
+    Private m_TaskidMapProcessBarIndex As New Collection
 
     ' 窗体加载事件
     Private Sub Form_Load()
@@ -41,13 +43,18 @@ Class FormUIDemo
         ' 例如：进度条、列表框、按钮等
         
         ' 示例（需要根据实际的控件名称调整）:
-        ' ProgressBar1.Min = 0
-        ' ProgressBar1.Max = 100
-        ' ProgressBar1.Value = 0
-        ' ListBoxLog.Clear
-        ' ButtonStart.Caption = "Start Tasks"
-        ' ButtonCancel.Caption = "Cancel All"
-        ' ButtonCancel.Enabled = False
+        Dim i As Long
+        For i = 0 To 2
+            ProgressBar1(i).Min = 0
+            ProgressBar1(i).Max = 100
+            ProgressBar1(i).Value = 0
+            Label1(i).Caption = "就绪"
+        Next
+        LabelStatus.Caption = "Ready"
+        ListBoxLog.Clear
+        ButtonStart.Caption = "Start Tasks"
+        ButtonCancel.Caption = "Cancel All"
+        ButtonCancel.Enabled = False
     End Sub
 
     ' =====================================================
@@ -57,8 +64,10 @@ Class FormUIDemo
     ' 处理线程进度通知
     Private Sub m_UINotifier_ThreadProgress(ByVal TaskId As String, ByVal CurrentValue As Long, ByVal MaxValue As Long, ByVal Message As String)
         ' 更新进度条
-        ' ProgressBar1.Max = MaxValue
-        ' ProgressBar1.Value = CurrentValue
+        Dim i As Long = m_TaskidMapProcessBarIndex.Item(TaskId)
+        ProgressBar1(i).Max = MaxValue
+        ProgressBar1(i).Value = CurrentValue
+        Label1(i).Caption = Message
         
         ' 更新状态标签
         Dim percent As Long
@@ -66,7 +75,7 @@ Class FormUIDemo
             percent = (CurrentValue * 100) \ MaxValue
         End If
         
-        ' LabelStatus.Caption = "Task " & GetTaskDisplayName(TaskId) & ": " & percent & "% - " & Message
+        LabelStatus.Caption = "Task " & GetTaskDisplayName(TaskId) & ": " & percent & "% - " & Message
         
         ' 记录到日志
         AddLogMessage "[PROGRESS] " & GetTaskDisplayName(TaskId) & ": " & CurrentValue & "/" & MaxValue & " - " & Message
@@ -77,6 +86,9 @@ Class FormUIDemo
 
     ' 处理线程完成通知
     Private Sub m_UINotifier_ThreadCompleted(ByVal TaskId As String, ByVal Result As Variant)
+        Dim i As Long = m_TaskidMapProcessBarIndex.Item(TaskId)
+        Label1(i).Caption = "已完成"
+        
         AddLogMessage "[COMPLETED] " & GetTaskDisplayName(TaskId) & " finished with result: " & CStr(Result)
         
         ' 更新UI状态
@@ -134,13 +146,14 @@ Class FormUIDemo
         AddLogMessage "Starting demo tasks..."
         
         ' 启动不同类型的任务
+        m_TaskidMapProcessBarIndex.Clear()
         StartFileProcessTask
         StartDownloadTask
         StartDatabaseTask
         
         ' 更新UI状态
-        ' ButtonStart.Enabled = False
-        ' ButtonCancel.Enabled = True
+        ButtonStart.Enabled = False
+        ButtonCancel.Enabled = True
         
         AddLogMessage "All tasks started. Monitor progress below."
     End Sub
@@ -152,10 +165,10 @@ Class FormUIDemo
             AddLogMessage "All tasks cancelled by user"
             
             ' 更新UI状态
-            ' ButtonStart.Enabled = True
-            ' ButtonCancel.Enabled = False
-            ' ProgressBar1.Value = 0
-            ' LabelStatus.Caption = "Ready"
+            ButtonStart.Enabled = True
+            ButtonCancel.Enabled = False
+           
+            InitializeUI()
         End If
     End Sub
 
@@ -167,18 +180,21 @@ Class FormUIDemo
         Dim task As cThread
         Set task = m_ThreadPool.AddTask(AddressOf mUINotifierExample.FileProcessTask, "FileTask")
         AddLogMessage "Started file processing task: " & task.TaskId
+        m_TaskidMapProcessBarIndex.Add(0, task.TaskId)
     End Sub
 
     Private Sub StartDownloadTask()
         Dim task As cThread
         Set task = m_ThreadPool.AddTask(AddressOf mUINotifierExample.DownloadTask, "DownloadTask")
         AddLogMessage "Started download task: " & task.TaskId
+        m_TaskidMapProcessBarIndex.Add(1, task.TaskId)
     End Sub
 
     Private Sub StartDatabaseTask()
         Dim task As cThread
         Set task = m_ThreadPool.AddTask(AddressOf mUINotifierExample.DatabaseBatchTask, "DatabaseTask")
         AddLogMessage "Started database task: " & task.TaskId
+        m_TaskidMapProcessBarIndex.Add(2, task.TaskId)
     End Sub
 
     ' =====================================================
@@ -194,8 +210,8 @@ Class FormUIDemo
         logEntry = timeStamp & " - " & message
         
         ' 添加到日志列表框
-        ' ListBoxLog.AddItem logEntry
-        ' ListBoxLog.TopIndex = ListBoxLog.ListCount - 1  ' 自动滚动到底部
+        ListBoxLog.AddItem logEntry
+        ListBoxLog.TopIndex = ListBoxLog.ListCount - 1  ' 自动滚动到底部
         
         ' 同时输出到调试窗口
         Debug.Print logEntry
@@ -225,8 +241,8 @@ Class FormUIDemo
         ' 如果完成，可以重新启用开始按钮
         
         ' 简化实现：延迟检查
-        ' Timer1.Interval = 1000
-        ' Timer1.Enabled = True
+        Timer1.Interval = 1000
+        Timer1.Enabled = True
     End Sub
 
     ' 定时器事件（可选）
@@ -240,9 +256,11 @@ Class FormUIDemo
                 AddLogMessage "All tasks completed!"
                 
                 ' 重新启用开始按钮
-                ' ButtonStart.Enabled = True
-                ' ButtonCancel.Enabled = False
-                ' LabelStatus.Caption = "All tasks completed"
+                ButtonStart.Enabled = True
+                ButtonCancel.Enabled = False
+                LabelStatus.Caption = "All tasks completed"
+                
+                Timer1.Enabled = False
             End If
         End If
     End Sub
