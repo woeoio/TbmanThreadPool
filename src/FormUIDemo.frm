@@ -1,5 +1,5 @@
 [Description("")]
-[FormDesignerId("UI-NOTIFIER-DEMO-FORM")]
+[FormDesignerId("AEF87A46-FA0F-41E0-BE51-80166E1DC4C5")]
 [PredeclaredId]
 Class FormUIDemo
 
