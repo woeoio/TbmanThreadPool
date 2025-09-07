@@ -1,5 +1,9 @@
 Module mCallbackDemo
 
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
+
     ' 定义示例数据类型
     Private Type TaskData
         TaskId As Long

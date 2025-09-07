@@ -5,6 +5,7 @@ Class FormUIDemo
 
     '@Author: 邓伟(woeoio)
     '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
     '@Description "UI通知器演示窗体"
 
     ' UI通知器 - 使用WithEvents来接收事件

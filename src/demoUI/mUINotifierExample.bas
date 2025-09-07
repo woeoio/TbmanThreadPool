@@ -2,6 +2,7 @@ Module mUINotifierExample
 
     '@Author: 邓伟(woeoio)
     '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
     '@Description "UI通知器使用示例"
 
     ' 示例：在Form中使用UI通知器

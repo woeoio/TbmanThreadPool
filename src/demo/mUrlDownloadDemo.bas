@@ -1,5 +1,9 @@
 Module mUrlDownloadDemo
 
+    '@Author: 邓伟(woeoio)
+    '@Email: 215879458@qq.com
+    '@Document: https://doc.twinbasic.vb6.pro/en/tbman/threadPool/
+
     ' WinHttp API 声明
     Private Declare PtrSafe Function WinHttpOpen Lib "winhttp" Alias "WinHttpOpen" ( _
         ByVal pwszUserAgent As LongPtr, _
